@@ -11,6 +11,9 @@
 #include <JuceHeader.h>
 #include "fftw3.h"
 
+#define REAL 0
+#define IMAG 1
+
 //==============================================================================
 /**
 */
@@ -56,13 +59,16 @@ public:
 
 
     //---------- Binauralization --------------------------------------------------
-    void loadIRfile();
-    void fftw_convolution(juce::AudioBuffer<float>&);
+    int  store_ir_spectrum(int n, int m);
+    void fftw_convolution(int n, float* input1, float* input2, float* output);
+    void fftw_convolution(int n, float* input1, fftwf_complex* input2, float* output);
     void perform_fft(int n, float* input, fftwf_complex* output);
     void perform_ifft(int n, fftwf_complex* input, float* output);
     void normalize(int n, float* data);
+    void zero_padding(int n, int k, float* input, float* output);
+    void allocate_overlap_buffer(int mem, int k, float*** buf);
 
-    juce::AudioBuffer<float> IRbufferPtr;
+    juce::AudioBuffer<float> ir_buffer;
     bool ir_update = false;
     bool ir_ready = false;
     bool performConv = false;
@@ -72,6 +78,10 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BinauralizationAudioProcessor)
 
    fftwf_plan plan;
-   fftwf_complex** ir_spectrum;
+   fftwf_complex** ir_spectrum = NULL;
+   // [MEM][CHANNEL][SAMPLES]
+   float*** overlap_buffer = NULL;
+   int K = 0;
+   int MEM = 0;
     
 };

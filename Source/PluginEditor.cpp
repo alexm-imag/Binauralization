@@ -53,20 +53,23 @@ void BinauralizationAudioProcessorEditor::openIRfile() {
 
     // check if something has been selected
     if (selector.browseForFileToOpen()) {
-        File IRfile;
+        File ir_file;
         // store file in IRfile
-        IRfile = selector.getResult();
+        ir_file = selector.getResult();
 
         // allow .wav and .aiff formats
-        AudioFormatManager IRmanager;
-        IRmanager.registerBasicFormats();
+        AudioFormatManager ir_manager;
+        
+        ir_manager.registerBasicFormats();
 
-        AudioFormatReader* IRreader = IRmanager.createReaderFor(IRfile);
-        AudioBuffer<float> IRbuffer(2, IRreader->lengthInSamples);
+        AudioFormatReader* ir_reader = ir_manager.createReaderFor(ir_file);
 
-        IRreader->read(&IRbuffer, 0, IRreader->lengthInSamples, 0, 1, 1);
+        AudioBuffer<float> tmp_buffer(2, ir_reader->lengthInSamples);
+
+        ir_reader->read(&tmp_buffer, 0, ir_reader->lengthInSamples, 0, 1, 1);
+
         // copy AudioBuffer content into audioProcessor context
-        audioProcessor.IRbufferPtr = IRbuffer;
+        audioProcessor.ir_buffer = tmp_buffer;
         // set IRhasbeenLoaded flag
         audioProcessor.ir_update = true;
 
