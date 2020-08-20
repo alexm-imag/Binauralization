@@ -148,7 +148,6 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
             if (overlap_buffer != NULL)
                 free(overlap_buffer);
 
-
             K = store_ir_spectrum(n, ir_buffer.getNumSamples()/ir_buffer.getNumChannels());
 
             MEM = K / n;
@@ -161,24 +160,23 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
                     overlap_buffer[i][j] = (float*)malloc(sizeof(float) * K);
                 }
             }
-
-
         }
             
         // perform convolution with loaded impulse response
         if (ir_ready && performConv) {
 
             // make sure over_lap_buffer is initialized with zeroes...
-            memcpy(overlap_buffer[0][channel], channelData, n);
+            memcpy(overlap_buffer[0][channel], channelData, sizeof(float)*n);   
+
             for (int i = n; i < K; i++) {
-                overlap_buffer[0][channel][i] = 0.;
+                overlap_buffer[0][channel][i] = 0.;   
             }
 
             // perform fft-based convolution
             fftw_convolution(K, overlap_buffer[0][channel], ir_spectrum[channel], overlap_buffer[0][channel]); 
 
             // write first block into channel Data
-            memcpy(channelData, overlap_buffer[0][channel], n);
+            memcpy(channelData, overlap_buffer[0][channel], sizeof(float)*n);
 
             // overlap add
             for (int i = 1; i < MEM; i++) {
@@ -186,7 +184,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
                     channelData[j] += overlap_buffer[i][channel][j + (n * i)];
                 }
                 // shuffle through overlap_buffer
-                memcpy(overlap_buffer[i][channel], overlap_buffer[i-1][channel], K);
+                memcpy(overlap_buffer[i][channel], overlap_buffer[i-1][channel], sizeof(float)*K);
             }
         }
 
@@ -280,8 +278,8 @@ int BinauralizationAudioProcessor::store_ir_spectrum(int n, int m) {
     tmp_padded = new float[K] {0};
 
     for (int i = 0; i < 2; i++) {
-        memcpy(tmp_padded, ir_buffer.getWritePointer(i), m);
-        perform_fft(m, tmp_padded, ir_spectrum[i]);
+        memcpy(tmp_padded, ir_buffer.getWritePointer(i), sizeof(float)*m);
+        perform_fft(K, tmp_padded, ir_spectrum[i]);
     }
 
     delete[] tmp_padded;
