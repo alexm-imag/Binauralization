@@ -65,8 +65,6 @@ public:
     void perform_fft(int n, float* input, fftwf_complex* output);
     void perform_ifft(int n, fftwf_complex* input, float* output);
     void normalize(int n, float* data);
-    void zero_padding(int n, int k, float* input, float* output);
-    void allocate_overlap_buffer(int mem, int k, float*** buf);
 
     juce::AudioBuffer<float> ir_buffer;
     bool ir_update = false;
@@ -81,6 +79,7 @@ private:
    fftwf_complex** ir_spectrum = NULL;
    // [MEM][CHANNEL][SAMPLES]
    float*** overlap_buffer = NULL;
+   float* test_buf = NULL;
    int K = 0;
    int MEM = 0;
     

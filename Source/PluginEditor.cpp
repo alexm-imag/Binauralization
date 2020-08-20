@@ -16,6 +16,16 @@ BinauralizationAudioProcessorEditor::BinauralizationAudioProcessorEditor (Binaur
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
     setSize (400, 300);
+
+    OpenButton.onClick = [this] {openIRfile(); };
+    OpenButton.setColour(TextButton::buttonColourId, Colour(0xff79ed7f));
+    OpenButton.setColour(TextButton::textColourOffId, Colours::black);
+    addAndMakeVisible(OpenButton);
+
+    ConvButton.onClick = [this] {toggleConvolution(); };
+    ConvButton.setColour(TextButton::buttonColourId, Colour(0xff79ed7f));
+    ConvButton.setColour(TextButton::textColourOffId, Colours::black);
+    addAndMakeVisible(ConvButton);
 }
 
 BinauralizationAudioProcessorEditor::~BinauralizationAudioProcessorEditor()
