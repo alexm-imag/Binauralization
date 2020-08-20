@@ -168,26 +168,26 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
             // perform fft-based convolution
             for (int ch = 0; ch < 2; ch++) {
                 // make sure over_lap_buffer is initialized with zeroes...
-                memcpy(overlap_buffer[0][channel], channelData, sizeof(float) * n);
+                memcpy(overlap_buffer[0][ch], channelData, sizeof(float) * n);
 
                 for (int i = n; i < K; i++) {
-                    overlap_buffer[0][channel][i] = 0.;
+                    overlap_buffer[0][ch][i] = 0.;
                 }
 
                 channelData = buffer.getWritePointer(ch);
 
-                fftw_convolution(K, overlap_buffer[0][channel], ir_spectrum[channel], overlap_buffer[0][channel]);
+                fftw_convolution(K, overlap_buffer[0][ch], ir_spectrum[ch], overlap_buffer[0][ch]);
 
                 // write first block into channel Data
-                memcpy(channelData, overlap_buffer[0][channel], sizeof(float) * n);
+                memcpy(channelData, overlap_buffer[0][ch], sizeof(float) * n);
 
                 // overlap add
                 for (int i = 1; i < MEM; i++) {
                     for (int j = 0; j < n; j++) {
-                        channelData[j] += overlap_buffer[i][channel][j + (n * i)];
+                        channelData[j] += overlap_buffer[i][ch][j + (n * i)];
                     }
                     // shuffle through overlap_buffer
-                    memcpy(overlap_buffer[i][channel], overlap_buffer[i - 1][channel], sizeof(float) * K);
+                    memcpy(overlap_buffer[i][ch], overlap_buffer[i - 1][ch], sizeof(float) * K);
                 }
             }
 
