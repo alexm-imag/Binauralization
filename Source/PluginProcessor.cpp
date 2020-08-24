@@ -139,7 +139,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         // move outside of for loop
-        int n = buffer.getNumSamples()/buffer.getNumChannels();
+        int n = buffer.getNumSamples();// / buffer.getNumChannels();
         auto* channelData = buffer.getWritePointer (channel);
 
         // pre-transform ir and store
@@ -148,7 +148,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
             if (overlap_buffer != NULL)
                 free(overlap_buffer);
 
-            K = store_ir_spectrum(n, ir_buffer.getNumSamples()/ir_buffer.getNumChannels());
+            K = store_ir_spectrum(n, ir_buffer.getNumSamples());///ir_buffer.getNumChannels());
 
             MEM = K / n;
             
