@@ -303,7 +303,7 @@ void BinauralizationAudioProcessor::fftw_convolution(int n, float* input1, float
     fftwf_complex* spec2 = fftwf_alloc_complex(n);
 
     perform_fft(n, input1, spec1);
-    perform_fft(n, input1, spec2);
+    perform_fft(n, input2, spec2);
 
     for (int i = 0; i < n; i++) {
         spec1[i][REAL] = spec1[REAL][i] * spec2[REAL][i] - spec1[IMAG][i] * spec2[IMAG][i];
