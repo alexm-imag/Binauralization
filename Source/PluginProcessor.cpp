@@ -196,7 +196,8 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
                     }
                     // shuffle through overlap_buffer
                     memcpy(overlap_buffer[i][ch], overlap_buffer[i - 1][ch], sizeof(float) * K);
-                }  
+                } 
+                
             }
         }
 
@@ -290,11 +291,12 @@ void BinauralizationAudioProcessor::store_ir_spectrum(int n, int m, int k) {
     ir_update = false;
 
     if (ir_spectrum != NULL) {
-        fftwf_free(ir_spectrum);
-        ir_spectrum = NULL;
+        fftwf_free(ir_spectrum[0]);
+        fftwf_free(ir_spectrum[1]);
+        delete[] ir_spectrum;
     }
         
-
+    
     ir_spectrum = new fftwf_complex * [2];
     ir_spectrum[0] = fftwf_alloc_complex(k);
     ir_spectrum[1] = fftwf_alloc_complex(k);
