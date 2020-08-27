@@ -106,5 +106,4 @@ void BinauralizationAudioProcessorEditor::toggleConvolution() {
         ConvButton.setButtonText("Conv Inactive");
     }
 
-
 }

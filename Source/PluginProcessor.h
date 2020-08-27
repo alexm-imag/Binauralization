@@ -59,12 +59,13 @@ public:
 
 
     //---------- Binauralization --------------------------------------------------
-    int  store_ir_spectrum(int n, int m);
     void fftw_convolution(int n, float* input1, float* input2, float* output);
     void fftw_convolution(int n, float* input1, fftwf_complex* input2, float* output);
     void perform_fft(int n, float* input, fftwf_complex* output);
     void perform_ifft(int n, fftwf_complex* input, float* output);
     void normalize(int n, float* data);
+    int get_padding_size(int n, int m);
+    void store_ir_spectrum(int n, int m, int k);
 
     juce::AudioBuffer<float> ir_buffer;
     bool ir_update = false;
