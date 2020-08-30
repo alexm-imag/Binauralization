@@ -142,6 +142,8 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         int n = buffer.getNumSamples();
         auto* channelData = buffer.getWritePointer (channel);
 
+
+        //// REMOVE THIS IN FUTURE RENDITIONS (will be done inside Editor)
         // pre-transform ir and store
         if (ir_update) {
             // free overlap_buffer from bottom to top...
@@ -203,7 +205,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
                 } 
             }
         }
-
+        //// LEADS TO PROBLEMS IN CONJUNCTION WITH NEW HRTF LOADER (and was only operational proof in the first place)
         // perform fft and ifft (unaltered signal)
         else {
             /*

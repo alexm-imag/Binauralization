@@ -103,7 +103,7 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
 
     // delete old entries upon re-opening
 
-    //audioProcessor.ir_update = false;
+    audioProcessor.ir_ready = false;
 
     // let user select an IR dir / or select all files (not very user friendly...)
     FileChooser selector("Choose IR directory", File::getSpecialLocation(File::userDesktopDirectory));
@@ -128,6 +128,7 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         ir_reader = ir_manager.createReaderFor(*file_ptr);
         
         // change to if != NULL delete everything and re-allocate (but this will do for now)
+        // currently old data will simply be overwritten (which of course would lead to problmems with the addition of multiple HRTF datasets)
         if (audioProcessor.hrtf_buffer == NULL) {
             // allocate space for x HRFT spectra
             audioProcessor.hrtf_buffer = (fftwf_complex***)malloc(sizeof(fftwf_complex**) * files.size());
@@ -163,19 +164,14 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
 
         }
 
-        
-        //audioProcessor.ir_update = true;
-
         DBG("dir loaded");
 
-        // clean up old fft-buffer at some point?
-        // perform fft here?
+        audioProcessor.ir_ready = false;
 
         return;
     }
 
     DBG("loading failed");
-
 
 }
 
