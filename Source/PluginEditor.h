@@ -32,8 +32,11 @@ private:
     BinauralizationAudioProcessor& audioProcessor;
 
     TextButton OpenButton{ "Open IR file" };
+    TextButton DirButton{ "Open IR dir" };
     TextButton ConvButton{ "Conv Inactive" };
+
     void openIRfile();
+    void openIRdirectory();
     void toggleConvolution();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BinauralizationAudioProcessorEditor)

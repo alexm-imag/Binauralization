@@ -171,7 +171,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         if (ir_ready && performConv) {
 
             // perform fft-based convolution
-            for (int ch = 0; ch < 2; ch++) {
+            for (int ch = 0; ch < 1; ch++) {
                 // write inputData into overlap_buffer
                 memcpy(overlap_buffer[0][ch], channelData, sizeof(float) * n);
 
@@ -181,7 +181,11 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
                 }
 
                 // perform fft-based convolution
+                //// it seems that performing the convolution twice leads to problems...
                 fftw_convolution(K, overlap_buffer[0][ch], ir_spectrum[ch], overlap_buffer[0][ch]);
+                //// this also leads to cracks...
+                //memcpy(overlap_buffer[0][1], overlap_buffer[0][0], K);
+                //fftw_convolution(K, overlap_buffer[0][0], ir_spectrum[0], overlap_buffer[0][1]);
 
                 // get new WritePointer (only needed in second ch iteration)
                 channelData = buffer.getWritePointer(ch);
@@ -197,13 +201,12 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
                     // shuffle through overlap_buffer
                     memcpy(overlap_buffer[i][ch], overlap_buffer[i - 1][ch], sizeof(float) * K);
                 } 
-                
             }
         }
 
         // perform fft and ifft (unaltered signal)
         else {
-
+            /*
             fftwf_complex* tmp = fftwf_alloc_complex(n);
 
             perform_fft(n, channelData, tmp);
@@ -211,6 +214,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
             normalize(n, channelData);
 
             fftwf_free(tmp);
+            */
         }
 
     }

@@ -68,9 +68,12 @@ public:
     void store_ir_spectrum(int n, int m, int k);
 
     juce::AudioBuffer<float> ir_buffer;
+    //juce::AudioBuffer<float> hrft_buffer;       // adjust size?
     bool ir_update = false;
     bool ir_ready = false;
     bool performConv = false;
+
+    fftwf_complex*** hrtf_buffer = NULL;
     
 private:
     //==============================================================================
