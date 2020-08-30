@@ -207,8 +207,9 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         }
         //// LEADS TO PROBLEMS IN CONJUNCTION WITH NEW HRTF LOADER (and was only operational proof in the first place)
         // perform fft and ifft (unaltered signal)
+        /*
         else {
-            /*
+            
             fftwf_complex* tmp = fftwf_alloc_complex(n);
 
             perform_fft(n, channelData, tmp);
@@ -216,8 +217,8 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
             normalize(n, channelData);
 
             fftwf_free(tmp);
-            */
         }
+        */
 
     }
 }

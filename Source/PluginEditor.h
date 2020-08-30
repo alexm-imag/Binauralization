@@ -34,6 +34,7 @@ private:
     TextButton OpenButton{ "Open IR file" };
     TextButton DirButton{ "Open IR dir" };
     TextButton ConvButton{ "Conv Inactive" };
+    Slider     HRTF_Slider;
 
     void openIRfile();
     void openIRdirectory();

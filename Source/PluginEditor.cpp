@@ -31,6 +31,12 @@ BinauralizationAudioProcessorEditor::BinauralizationAudioProcessorEditor (Binaur
     ConvButton.setColour(TextButton::buttonColourId, Colour(0xff79ed7f));
     ConvButton.setColour(TextButton::textColourOffId, Colours::black);
     addAndMakeVisible(ConvButton);
+
+    HRTF_Slider.setSliderStyle(Slider::Rotary);
+    HRTF_Slider.setRange(0, 360, 1);
+    HRTF_Slider.setTextBoxStyle(Slider::TextBoxBelow, 1, 50, 20);
+    addAndMakeVisible(HRTF_Slider);
+
 }
 
 BinauralizationAudioProcessorEditor::~BinauralizationAudioProcessorEditor()
@@ -52,9 +58,10 @@ void BinauralizationAudioProcessorEditor::resized()
 {
 
     // Xpos, Ypos, Xdim, Ydim
-    OpenButton.setBounds(100, 100, 100, 50);
-    DirButton.setBounds(100, 150, 100, 50);
-    ConvButton.setBounds(200, 100, 100, 50);
+    OpenButton.setBounds(100, 75, 100, 50);
+    ConvButton.setBounds(200, 75, 100, 50);
+    DirButton.setBounds(100, 125, 100, 50);
+    HRTF_Slider.setBounds(200, 125, 100, 100);
 
 }
 
