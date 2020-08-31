@@ -68,11 +68,13 @@ public:
     void store_ir_spectrum(int n, int m, int k);
 
     juce::AudioBuffer<float> ir_buffer;
-    //juce::AudioBuffer<float> hrft_buffer;       // adjust size?
     bool ir_update = false;
     bool ir_ready = false;
     bool performConv = false;
+    int hrtf_sel = 0;
+    int hrtf_len = 0;
 
+    // [DEG][CHANNEL][SAMPLES]
     fftwf_complex*** hrtf_buffer = NULL;
     
 private:
@@ -80,6 +82,7 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BinauralizationAudioProcessor)
 
    fftwf_plan plan;
+    // not longer needed
    fftwf_complex** ir_spectrum = NULL;
    // [MEM][CHANNEL][SAMPLES]
    float*** overlap_buffer = NULL;

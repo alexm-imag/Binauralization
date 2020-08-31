@@ -143,22 +143,22 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         auto* channelData = buffer.getWritePointer (channel);
 
 
-        //// REMOVE THIS IN FUTURE RENDITIONS (will be done inside Editor)
-        // pre-transform ir and store
+        // allocate overlap_buffer
         if (ir_update) {
             // free overlap_buffer from bottom to top...
-            if (overlap_buffer != NULL)
-                free(overlap_buffer);
+            if (overlap_buffer != NULL) {
+                for (int i = 0; i < MEM; i++) {
+                    for (int j = 0; j < 2; j++) {
+                        free(overlap_buffer[i][j]);
+                    }
+                    free(overlap_buffer[i]);
+                }
+            }
 
-            // calculate K (multiple of n, with K >= n + m - 1)
-            K = get_padding_size(n, ir_buffer.getNumSamples());
+            K = get_padding_size(n, hrtf_len);
 
-            // load ir and store spectrum
-            store_ir_spectrum(n, ir_buffer.getNumSamples(), K);
-
-            // calculate necessary MEM blocks for overlap_add buffer
             MEM = K / n;
-            
+
             // allocate space for overlap add buffer
             overlap_buffer = (float***)malloc(sizeof(float**) * MEM);
             for (int i = 0; i < MEM; i++) {
@@ -167,6 +167,8 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
                     overlap_buffer[i][j] = (float*)malloc(sizeof(float) * K);
                 }
             }
+
+            ir_update = false;
         }
             
         // perform convolution with loaded impulse response
@@ -184,10 +186,13 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
 
                 // perform fft-based convolution
                 //// it seems that performing the convolution twice leads to problems...
-                fftw_convolution(K, overlap_buffer[0][ch], ir_spectrum[ch], overlap_buffer[0][ch]);
+                //fftw_convolution(K, overlap_buffer[0][ch], ir_spectrum[ch], overlap_buffer[0][ch]);
+                fftw_convolution(K, overlap_buffer[0][ch], hrtf_buffer[hrtf_sel][ch], overlap_buffer[0][ch]);
+               
                 //// this also leads to cracks...
                 //memcpy(overlap_buffer[0][1], overlap_buffer[0][0], K);
                 //fftw_convolution(K, overlap_buffer[0][0], ir_spectrum[0], overlap_buffer[0][1]);
+                //fftw_convolution(K, overlap_buffer[1][0], ir_spectrum[0], overlap_buffer[1][1]);
 
                 // get new WritePointer (only needed in second ch iteration)
                 channelData = buffer.getWritePointer(ch);
@@ -205,21 +210,6 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
                 } 
             }
         }
-        //// LEADS TO PROBLEMS IN CONJUNCTION WITH NEW HRTF LOADER (and was only operational proof in the first place)
-        // perform fft and ifft (unaltered signal)
-        /*
-        else {
-            
-            fftwf_complex* tmp = fftwf_alloc_complex(n);
-
-            perform_fft(n, channelData, tmp);
-            perform_ifft(n, tmp, channelData);
-            normalize(n, channelData);
-
-            fftwf_free(tmp);
-        }
-        */
-
     }
 }
 
@@ -302,8 +292,7 @@ void BinauralizationAudioProcessor::store_ir_spectrum(int n, int m, int k) {
         fftwf_free(ir_spectrum[1]);
         delete[] ir_spectrum;
     }
-        
-    
+            
     ir_spectrum = new fftwf_complex * [2];
     ir_spectrum[0] = fftwf_alloc_complex(k);
     ir_spectrum[1] = fftwf_alloc_complex(k);

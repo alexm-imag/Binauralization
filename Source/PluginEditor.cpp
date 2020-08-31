@@ -32,6 +32,7 @@ BinauralizationAudioProcessorEditor::BinauralizationAudioProcessorEditor (Binaur
     ConvButton.setColour(TextButton::textColourOffId, Colours::black);
     addAndMakeVisible(ConvButton);
 
+    HRTF_Slider.onDragEnd = [this] {audioProcessor.hrtf_sel = HRTF_Slider.getValue(); };
     HRTF_Slider.setSliderStyle(Slider::Rotary);
     HRTF_Slider.setRange(0, 360, 1);
     HRTF_Slider.setTextBoxStyle(Slider::TextBoxBelow, 1, 50, 20);
@@ -133,9 +134,12 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         // create audio reader according to first audio file
         // WARNING: this works only audio files are of the same length / dimension!
         ir_reader = ir_manager.createReaderFor(*file_ptr);
+
+        audioProcessor.hrtf_len = ir_reader->lengthInSamples;
         
         // change to if != NULL delete everything and re-allocate (but this will do for now)
         // currently old data will simply be overwritten (which of course would lead to problmems with the addition of multiple HRTF datasets)
+        // WARNING: re-opening because of incomplete load (e.g 357 instead of 360) leads to stack overflow > re-allocate mem at every "open dir" issue, or add mem to buffer!
         if (audioProcessor.hrtf_buffer == NULL) {
             // allocate space for x HRFT spectra
             audioProcessor.hrtf_buffer = (fftwf_complex***)malloc(sizeof(fftwf_complex**) * files.size());
@@ -173,7 +177,8 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
 
         DBG("dir loaded");
 
-        audioProcessor.ir_ready = false;
+        audioProcessor.ir_ready = true;
+        audioProcessor.ir_update = true;
 
         return;
     }
