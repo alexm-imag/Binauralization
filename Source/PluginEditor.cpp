@@ -34,7 +34,7 @@ BinauralizationAudioProcessorEditor::BinauralizationAudioProcessorEditor (Binaur
 
     HRTF_Slider.onDragEnd = [this] {audioProcessor.hrtf_sel = HRTF_Slider.getValue(); };
     HRTF_Slider.setSliderStyle(Slider::Rotary);
-    HRTF_Slider.setRange(0, 360, 1);
+    HRTF_Slider.setRange(0, 359, 1);
     HRTF_Slider.setTextBoxStyle(Slider::TextBoxBelow, 1, 50, 20);
     addAndMakeVisible(HRTF_Slider);
 

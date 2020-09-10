@@ -133,19 +133,20 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
+    
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
-
+    
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         // move outside of for loop
         int n = buffer.getNumSamples();
-        auto* channelData = buffer.getWritePointer (channel);
+        auto* channelData = buffer.getWritePointer (channel); // channel
 
 
         // allocate overlap_buffer
         if (ir_update) {
-            // free overlap_buffer from bottom to top...
+            // free overlap_buffer from bottom to top
             if (overlap_buffer != NULL) {
                 for (int i = 0; i < MEM; i++) {
                     for (int j = 0; j < 2; j++) {
@@ -175,7 +176,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         if (ir_ready && performConv) {
 
             // perform fft-based convolution
-            for (int ch = 0; ch < 1; ch++) {
+            for (int ch = 0; ch < 2; ch++) {
                 // write inputData into overlap_buffer
                 memcpy(overlap_buffer[0][ch], channelData, sizeof(float) * n);
 
@@ -186,13 +187,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
 
                 // perform fft-based convolution
                 //// it seems that performing the convolution twice leads to problems...
-                //fftw_convolution(K, overlap_buffer[0][ch], ir_spectrum[ch], overlap_buffer[0][ch]);
                 fftw_convolution(K, overlap_buffer[0][ch], hrtf_buffer[hrtf_sel][ch], overlap_buffer[0][ch]);
-               
-                //// this also leads to cracks...
-                //memcpy(overlap_buffer[0][1], overlap_buffer[0][0], K);
-                //fftw_convolution(K, overlap_buffer[0][0], ir_spectrum[0], overlap_buffer[0][1]);
-                //fftw_convolution(K, overlap_buffer[1][0], ir_spectrum[0], overlap_buffer[1][1]);
 
                 // get new WritePointer (only needed in second ch iteration)
                 channelData = buffer.getWritePointer(ch);

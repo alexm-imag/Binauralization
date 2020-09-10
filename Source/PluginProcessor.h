@@ -38,7 +38,7 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
 
-    //==============================================================================
+    //==============================================================================libfftw3f-3
     const juce::String getName() const override;
 
     bool acceptsMidi() const override;
