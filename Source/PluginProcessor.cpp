@@ -172,6 +172,11 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
                 }
             }
 
+            DBG("IR UPDATE DONE");
+            DBG(MEM);
+            DBG(hrtf_len);
+            DBG(n);
+            DBG(K);
             ir_update = false;
         }
             
@@ -279,35 +284,6 @@ int BinauralizationAudioProcessor::get_padding_size(int n, int m) {
         K += n - (K % n);
 
     return K;
-}
-
-void BinauralizationAudioProcessor::store_ir_spectrum(int n, int m, int k) {
-
-    float* tmp_padded;
-
-    ir_update = false;
-
-    if (ir_spectrum != NULL) {
-        fftwf_free(ir_spectrum[0]);
-        fftwf_free(ir_spectrum[1]);
-        delete[] ir_spectrum;
-    }
-            
-    ir_spectrum = new fftwf_complex * [2];
-    ir_spectrum[0] = fftwf_alloc_complex(k);
-    ir_spectrum[1] = fftwf_alloc_complex(k);
-
-    tmp_padded = new float[k] {0};
-
-    for (int i = 0; i < 2; i++) {
-        memcpy(tmp_padded, ir_buffer.getWritePointer(i), sizeof(float) * m);
-        perform_fft(k, tmp_padded, ir_spectrum[i]);
-    }
-
-    delete[] tmp_padded;
-
-    ir_ready = true;
-
 }
 
 void BinauralizationAudioProcessor::fftw_convolution(int n, float* input1, float* input2, float* output) {

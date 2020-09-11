@@ -65,9 +65,8 @@ public:
     void perform_ifft(int n, fftwf_complex* input, float* output);
     void normalize(int n, float* data);
     int get_padding_size(int n, int m);
-    void store_ir_spectrum(int n, int m, int k);
 
-    juce::AudioBuffer<float> ir_buffer;
+
     bool ir_update = false;
     bool ir_ready = false;
     bool performConv = false;

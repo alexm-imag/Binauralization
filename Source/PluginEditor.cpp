@@ -74,6 +74,7 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
     // check if something has been selected
     if (selector.browseForMultipleFilesToOpen()) {
         
+        int i = 0;
         Array<File> files;
         AudioFormatManager ir_manager;
         AudioFormatReader* ir_reader;
@@ -99,7 +100,7 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
             // allocate space for x HRFT spectra
             audioProcessor.hrtf_buffer = (fftwf_complex***)malloc(sizeof(fftwf_complex**) * files.size());
             // allocate two channles for each spectre (maybe just use 2 instead of ir_reader->numChannels, since other sizes will lead to problems!)
-            for (int i = 0; i < files.size(); i++) {
+            for (i = 0; i < files.size(); i++) {
                 audioProcessor.hrtf_buffer[i] = (fftwf_complex**)malloc(sizeof(fftwf_complex*) * ir_reader->numChannels);
                 for (int j = 0; j < ir_reader->numChannels; j++) {
                     audioProcessor.hrtf_buffer[i][j] = fftwf_alloc_complex(ir_reader->lengthInSamples);
@@ -113,13 +114,13 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         AudioBuffer<float> tmp_buffer(2, ir_reader->lengthInSamples);
         
         // iterate through array of files
-        for (int i = 0; *(file_ptr + i) != files.getLast(); i++) {
+        i = 0;
+        do {
             // first reader gets written twice, which isn't pretty but ok
             ir_reader = ir_manager.createReaderFor(*file_ptr);
 
             // copy reader data to float AudioBuffer
             ir_reader->read(&tmp_buffer, 0, ir_reader->lengthInSamples, 0, 1, 1);
-
 
             //// NOTE: it seems that Processor and Editor run in different threads
             //// Make sure that perform_fft can't collide
@@ -128,7 +129,7 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
             audioProcessor.perform_fft(ir_reader->lengthInSamples, tmp_buffer.getWritePointer(0), audioProcessor.hrtf_buffer[i][0]);
             audioProcessor.perform_fft(ir_reader->lengthInSamples, tmp_buffer.getWritePointer(1), audioProcessor.hrtf_buffer[i][1]);
 
-        }
+        } while (*(file_ptr + i++) != files.getLast());
 
         DBG("dir loaded");
 
