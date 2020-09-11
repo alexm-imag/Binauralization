@@ -133,6 +133,9 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
+
+    int filter_sel = 0;
+
     
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
@@ -141,7 +144,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
     {
         // move outside of for loop
         int n = buffer.getNumSamples();
-        auto* channelData = buffer.getWritePointer (channel); // channel
+        auto* channelData = buffer.getWritePointer (channel); 
 
 
         // allocate overlap_buffer
@@ -175,6 +178,8 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         // perform convolution with loaded impulse response
         if (ir_ready && performConv) {
 
+            filter_sel = hrtf_sel;
+
             // perform fft-based convolution
             for (int ch = 0; ch < 2; ch++) {
                 // write inputData into overlap_buffer
@@ -187,7 +192,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
 
                 // perform fft-based convolution
                 //// it seems that performing the convolution twice leads to problems...
-                fftw_convolution(K, overlap_buffer[0][ch], hrtf_buffer[hrtf_sel][ch], overlap_buffer[0][ch]);
+                fftw_convolution(K, overlap_buffer[0][ch], hrtf_buffer[filter_sel][ch], overlap_buffer[0][ch]);
 
                 // get new WritePointer (only needed in second ch iteration)
                 channelData = buffer.getWritePointer(ch);

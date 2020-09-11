@@ -17,11 +17,6 @@ BinauralizationAudioProcessorEditor::BinauralizationAudioProcessorEditor (Binaur
     // editor's size to whatever you need it to be.
     setSize (400, 300);
 
-    OpenButton.onClick = [this] {openIRfile(); };
-    OpenButton.setColour(TextButton::buttonColourId, Colour(0xff79ed7f));
-    OpenButton.setColour(TextButton::textColourOffId, Colours::black);
-    addAndMakeVisible(OpenButton);
-
     DirButton.onClick = [this] {openIRdirectory(); };
     DirButton.setColour(TextButton::buttonColourId, Colour(0xff79ed7f));
     DirButton.setColour(TextButton::textColourOffId, Colours::black);
@@ -59,51 +54,11 @@ void BinauralizationAudioProcessorEditor::resized()
 {
 
     // Xpos, Ypos, Xdim, Ydim
-    OpenButton.setBounds(100, 75, 100, 50);
     ConvButton.setBounds(200, 75, 100, 50);
-    DirButton.setBounds(100, 125, 100, 50);
-    HRTF_Slider.setBounds(200, 125, 100, 100);
+    DirButton.setBounds(100, 75, 100, 50);
+    HRTF_Slider.setBounds(150, 125, 100, 100);
 
 }
-
-void BinauralizationAudioProcessorEditor::openIRfile() {
-
-    DBG("clicked");
-
-    audioProcessor.ir_update = false;
-
-    // let user select an IR file
-    FileChooser selector("Choose IR file", File::getSpecialLocation(File::userDesktopDirectory), "*wav");
-
-    // check if something has been selected
-    if (selector.browseForFileToOpen()) {
-        File ir_file;
-        // store file in IRfile
-        ir_file = selector.getResult();
-
-        // allow .wav and .aiff formats
-        AudioFormatManager ir_manager;
-        
-        ir_manager.registerBasicFormats();
-
-        AudioFormatReader* ir_reader = ir_manager.createReaderFor(ir_file);
-
-        AudioBuffer<float> tmp_buffer(2, ir_reader->lengthInSamples);
-
-        ir_reader->read(&tmp_buffer, 0, ir_reader->lengthInSamples, 0, 1, 1);
-
-        // copy AudioBuffer content into audioProcessor context
-        audioProcessor.ir_buffer = tmp_buffer;
-        // set IRhasbeenLoaded flag
-        audioProcessor.ir_update = true;
-
-        DBG("file loaded");
-        return;
-    }
-
-    DBG("loading failed");
-}
-
 
 void BinauralizationAudioProcessorEditor::openIRdirectory() {
 
