@@ -9,10 +9,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "fftw3.h"
-
-#define REAL 0
-#define IMAG 1
+using namespace juce;
 
 //==============================================================================
 /**
@@ -59,30 +56,15 @@ public:
 
 
     //---------- Binauralization --------------------------------------------------
-    void fftw_convolution(int n, float* input1, float* input2, float* output);
-    void fftw_convolution(int n, float* input1, fftwf_complex* input2, float* output);
-    void perform_fft(int n, float* input, fftwf_complex* output);
-    void perform_ifft(int n, fftwf_complex* input, float* output);
-    void normalize(int n, float* data);
-    int get_padding_size(int n, int m);
-
-
     bool ir_update = false;
     bool ir_ready = false;
     bool performConv = false;
     int hrtf_sel = 0;
     int hrtf_len = 0;
 
-    // [DEG][CHANNEL][SAMPLES]
-    fftwf_complex*** hrtf_buffer = NULL;
+    Array<AudioBuffer<float>> hrtf_buffer;
     
 private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BinauralizationAudioProcessor)
-
-   // [MEM][CHANNEL][SAMPLES]
-   float*** overlap_buffer = NULL;
-   int K = 0;
-   int MEM = 0;
-    
 };

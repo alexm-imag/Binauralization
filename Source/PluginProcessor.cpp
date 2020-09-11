@@ -142,74 +142,38 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
     
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-        // move outside of for loop
+        auto* channelData = buffer.getWritePointer(channel);
+        juce::dsp::Complex<float> tmp;
+
         int n = buffer.getNumSamples();
-        auto* channelData = buffer.getWritePointer (channel); 
+        static int current_hrtf = 0;
 
+        static bool init = true;
 
-        // allocate overlap_buffer
-        if (ir_update) {
-            // free overlap_buffer from bottom to top
-            if (overlap_buffer != NULL) {
-                for (int i = 0; i < MEM; i++) {
-                    for (int j = 0; j < 2; j++) {
-                        free(overlap_buffer[i][j]);
-                    }
-                    free(overlap_buffer[i]);
-                }
-            }
+        static dsp::Convolution conv;
+        static dsp::ProcessSpec conv_spec;
+        dsp::AudioBlock<float> conv_block(buffer);
+        dsp::ProcessorChain<juce::dsp::Convolution> conv_chain;
 
-            K = get_padding_size(n, hrtf_len);
+        // init stuff
+        if (init) {
+            conv_spec.numChannels = 2;
+            conv_spec.sampleRate = 48000;
+            conv_spec.maximumBlockSize = 1024;  // estimation...
 
-            MEM = K / n;
-
-            // allocate space for overlap add buffer
-            overlap_buffer = (float***)malloc(sizeof(float**) * MEM);
-            for (int i = 0; i < MEM; i++) {
-                overlap_buffer[i] = (float**)malloc(sizeof(float*) * 2);
-                for (int j = 0; j < 2; j++) {
-                    overlap_buffer[i][j] = (float*)malloc(sizeof(float) * K);
-                }
-            }
-
-            DBG("IR UPDATE DONE");
-            ir_update = false;
+            init = false;
         }
-            
-        // perform convolution with loaded impulse response
-        if (!ir_update && ir_ready && performConv) {
 
-            filter_sel = hrtf_sel;
-
-            // perform fft-based convolution
-            for (int ch = 0; ch < 2; ch++) {
-                // write inputData into overlap_buffer
-                memcpy(overlap_buffer[0][ch], channelData, sizeof(float) * n);
-
-                // fill space from n to K with zeroes
-                for (int i = n; i < K; i++) {
-                    overlap_buffer[0][ch][i] = 0.;
-                }
-
-                // perform fft-based convolution
-                //// it seems that performing the convolution twice leads to problems...
-                fftw_convolution(K, overlap_buffer[0][ch], hrtf_buffer[filter_sel][ch], overlap_buffer[0][ch]);
-
-                // get new WritePointer (only needed in second ch iteration)
-                channelData = buffer.getWritePointer(ch);
-
-                // write first block into channel Data
-                memcpy(channelData, overlap_buffer[0][ch], sizeof(float) * n);
-                
-                // overlap and add
-                for (int i = 1; i < MEM; i++) {
-                    for (int j = 0; j < n; j++) {
-                        channelData[j] += overlap_buffer[i][ch][j + (n * i)];
-                    }
-                    // shuffle through overlap_buffer
-                    memcpy(overlap_buffer[i][ch], overlap_buffer[i - 1][ch], sizeof(float) * K);
-                } 
+        if (performConv) {
+            // if hrtf_sel has been altered, load new HRTF
+            if (current_hrtf != hrtf_sel) {
+                current_hrtf = hrtf_sel;
+                conv.prepare(conv_spec);
+                conv.loadImpulseResponse(hrtf_buffer[hrtf_sel], 48000., dsp::Convolution::Stereo::yes, dsp::Convolution::Trim::no, dsp::Convolution::Normalise::no);
+                DBG("SWAPPED HRTF");
             }
+            conv.process(dsp::ProcessContextReplacing<float>(conv_block));
+            conv.reset();
         }
     }
 }
@@ -244,81 +208,4 @@ void BinauralizationAudioProcessor::setStateInformation (const void* data, int s
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new BinauralizationAudioProcessor();
-}
-
-
-void BinauralizationAudioProcessor::perform_fft(int n, float* input, fftwf_complex* output) {
-
-    fftwf_plan plan = fftwf_plan_dft_r2c_1d(n, input, output, FFTW_ESTIMATE);
-    fftwf_execute(plan);
-    fftwf_destroy_plan(plan);
-    fftwf_cleanup();
-
-}
-
-void BinauralizationAudioProcessor::perform_ifft(int n, fftwf_complex* input, float* output) {
-
-    fftwf_plan plan = fftwf_plan_dft_c2r_1d(n, input, output, FFTW_ESTIMATE);
-    fftwf_execute(plan);
-    fftwf_destroy_plan(plan);
-    fftwf_cleanup();
-
-}
-
-void BinauralizationAudioProcessor::normalize(int n, float* data) {
-
-    for (int i = 0; i < n; i++) {
-        data[i] /= n;
-    }
-}
-
-int BinauralizationAudioProcessor::get_padding_size(int n, int m) {
-
-    int K = n + m - 1;
-
-    if (K % n != 0)
-        K += n - (K % n);
-
-    return K;
-}
-
-void BinauralizationAudioProcessor::fftw_convolution(int n, float* input1, float* input2, float* output) {
-
-
-    fftwf_complex* spec1 = fftwf_alloc_complex(n);
-    fftwf_complex* spec2 = fftwf_alloc_complex(n);
-
-    perform_fft(n, input1, spec1);
-    perform_fft(n, input2, spec2);
-
-    for (int i = 0; i < n; i++) {
-        spec1[i][REAL] = spec1[i][REAL] * spec2[i][REAL] - spec1[i][IMAG] * spec2[i][IMAG];
-        spec1[i][IMAG] = spec1[i][REAL] * spec2[i][IMAG] + spec1[i][IMAG] * spec2[i][REAL];
-    }
-    perform_ifft(n, spec1, output);
-
-    normalize(n, output);
-
-    fftwf_free(spec1);
-    fftwf_free(spec2);
-
-}
-
-void BinauralizationAudioProcessor::fftw_convolution(int n, float* input1, fftwf_complex* input2, float* output) {
-
-    fftwf_complex* spec1 = fftwf_alloc_complex(n);
-
-    perform_fft(n, input1, spec1);
-    
-    for (int i = 0; i < n; i++) {
-        spec1[i][REAL] = spec1[i][REAL] * input2[i][REAL] - spec1[i][IMAG] * input2[i][IMAG];
-        spec1[i][IMAG] = spec1[i][REAL] * input2[i][IMAG] + spec1[i][IMAG] * input2[i][REAL];
-    }
-    
-    perform_ifft(n, spec1, output);
-
-    normalize(n, output);
-
-    fftwf_free(spec1);
-
 }
