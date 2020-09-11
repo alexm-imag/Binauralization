@@ -152,7 +152,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
 
         static dsp::Convolution conv;
         static dsp::ProcessSpec conv_spec;
-        dsp::AudioBlock<float> conv_block(buffer);
+        dsp::AudioBlock<float> conv_block(buffer);  // no way to tell the need for mono -> stereo?
         dsp::ProcessorChain<juce::dsp::Convolution> conv_chain;
 
         // init stuff
