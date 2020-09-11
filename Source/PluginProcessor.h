@@ -80,12 +80,8 @@ private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BinauralizationAudioProcessor)
 
-   fftwf_plan plan;
-    // not longer needed
-   fftwf_complex** ir_spectrum = NULL;
    // [MEM][CHANNEL][SAMPLES]
    float*** overlap_buffer = NULL;
-   float* test_buf = NULL;
    int K = 0;
    int MEM = 0;
     

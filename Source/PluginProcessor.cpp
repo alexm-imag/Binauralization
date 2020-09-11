@@ -173,15 +173,11 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
             }
 
             DBG("IR UPDATE DONE");
-            DBG(MEM);
-            DBG(hrtf_len);
-            DBG(n);
-            DBG(K);
             ir_update = false;
         }
             
         // perform convolution with loaded impulse response
-        if (ir_ready && performConv) {
+        if (!ir_update && ir_ready && performConv) {
 
             filter_sel = hrtf_sel;
 
