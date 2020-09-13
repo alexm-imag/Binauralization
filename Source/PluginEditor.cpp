@@ -63,10 +63,7 @@ void BinauralizationAudioProcessorEditor::resized()
 
 void BinauralizationAudioProcessorEditor::openIRdirectory() {
 
-    DBG("clicked");
-
-    // delete old entries upon re-opening
-
+    // Usage of FFT is deactivated in ProcessBlock during loading of new HRTF, so new collisons occur
     audioProcessor.ir_ready = false;
 
     // let user select an IR dir / or select all files (not very user friendly...)
@@ -95,17 +92,17 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         audioProcessor.hrtf_buffer.num_samples = ir_reader->lengthInSamples;
         audioProcessor.hrtf_buffer.num_hrtfs = files.size();
         
-        // currently old data will simply be overwritten (which of course would lead to problmems with the addition of multiple HRTF datasets)
-        // WARNING: re-opening because of incomplete load (e.g 357 instead of 360) leads to stack overflow > re-allocate mem at every "open dir" issue, or add mem to buffer!
+        // free allocated space for hrtf_buffer
         if (audioProcessor.hrtf_buffer.left != NULL) {
-            for (int i = 0; i < audioProcessor.hrtf_buffer.num_hrtfs; i++) {
-                free(audioProcessor.hrtf_buffer.left[i]);
-                free(audioProcessor.hrtf_buffer.right[i]);
-            }
+            //for (int i = 0; i < audioProcessor.hrtf_buffer.num_hrtfs; i++) {
+                //free(audioProcessor.hrtf_buffer.left[i]);
+                //free(audioProcessor.hrtf_buffer.right[i]);
+            //}
             free(audioProcessor.hrtf_buffer.left);
             free(audioProcessor.hrtf_buffer.right);
         }
 
+        // k >= M + N - 1 (length IR, length data - 1)
         audioProcessor.k = audioProcessor.get_padding_size(audioProcessor.n, audioProcessor.hrtf_buffer.num_samples);
 
         // allocate space for x HRFT spectra
@@ -117,8 +114,7 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         }       
       
 
-        // create AudioBuffer of approriate size
-        // WARNING: this also only works with HRFTs of constant length!
+        // create temporary AudioBuffer of approriate size
         AudioBuffer<float> tmp_buffer(2, audioProcessor.k);
         
         // iterate through array of files
@@ -130,14 +126,7 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
             // copy reader data to float AudioBuffer
             ir_reader->read(&tmp_buffer, 0, ir_reader->lengthInSamples, 0, 1, 1);
 
-            //// NOTE: it seems that Processor and Editor run in different threads
-            //// Make sure that perform_fft can't collide
-            //// Deactivate fft in Processor while loading new files
             // perform fft on both channels for each HRTF file and store result in hrtf_buffer
-
-            // PERFORM ZERO PADDING BEFORE FFT!!!
-            // from where can I get the correct K?
-            // Assuming n is constant, this should work for now
             audioProcessor.perform_fft(ir_reader->lengthInSamples, tmp_buffer.getWritePointer(0), audioProcessor.hrtf_buffer.left[i]);
             audioProcessor.perform_fft(ir_reader->lengthInSamples, tmp_buffer.getWritePointer(1), audioProcessor.hrtf_buffer.right[i]);
 

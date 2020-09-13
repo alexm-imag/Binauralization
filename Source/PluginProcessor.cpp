@@ -165,7 +165,8 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
 
         // k >= M + N - 1 (gets set in openIRdirectory())
         // MEM holds the number of iterations, for which an old convolution result has to be hold to perform the overlap add convolution
-        MEM = k / n;
+        //MEM = k / n;
+        MEM = (k / n > 2) ? k / n : 2;
 
         // allocate space for overlap add buffer
         overlap_buffer_left = (float**)malloc(sizeof(float*) * MEM);
@@ -191,11 +192,13 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         memcpy(overlap_buffer_left[0], channelData, sizeof(float) * n);
         memcpy(overlap_buffer_right[0], channelData, sizeof(float) * n);
 
-        // fill space from n to K with zeroes
+        // fill space from n to k with zeroes
         for (int i = n; i < k; i++) {
             overlap_buffer_left[0][i] = 0.;
             overlap_buffer_right[0][i] = 0.;
         }
+
+        // some selections lead to a lot of noise... (e.g. 0, 4)
 
         // perform fft-based convolution
         fftw_convolution(k, overlap_buffer_left[0], hrtf_buffer.left[filter_sel], overlap_buffer_left[0]);
@@ -254,7 +257,7 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 
 void BinauralizationAudioProcessor::perform_fft(int n, float* input, fftwf_complex* output) {
 
-    fftwf_plan plan = fftwf_plan_dft_r2c_1d(n, input, output, FFTW_ESTIMATE);
+    fftwf_plan plan = fftwf_plan_dft_r2c_1d(n, input, output, FFTW_ESTIMATE);  
     fftwf_execute(plan);
     fftwf_destroy_plan(plan);
     fftwf_cleanup();
@@ -280,10 +283,10 @@ void BinauralizationAudioProcessor::normalize(int n, float* data) {
 int BinauralizationAudioProcessor::get_padding_size(int n, int m) {
 
     int k = n + m - 1;
-
+    // leaving this out leads to problems... probably within adding...
     if (k % n != 0)
         k += n - (k % n);
-
+    
     return k;
 }
 

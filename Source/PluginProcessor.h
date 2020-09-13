@@ -77,9 +77,9 @@ public:
     struct hrtf_buffer_sc {
         fftwf_complex** left = NULL;
         fftwf_complex** right = NULL;
-        int num_hrtfs;
-        int num_samples;
-        int sel;
+        int num_hrtfs = 0;
+        int num_samples = 0;
+        int sel = 0;
     } hrtf_buffer;
     
 private:
