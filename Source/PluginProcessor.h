@@ -70,19 +70,26 @@ public:
     bool ir_update = false;
     bool ir_ready = false;
     bool performConv = false;
-    int hrtf_sel = 0;
-    int hrtf_len = 0;
 
-    // [DEG][CHANNEL][SAMPLES]
-    fftwf_complex*** hrtf_buffer = NULL;
+    int n = 0;
+    int k = 0;
+
+    struct hrtf_buffer_sc {
+        fftwf_complex** left = NULL;
+        fftwf_complex** right = NULL;
+        int num_hrtfs;
+        int num_samples;
+        int sel;
+    } hrtf_buffer;
     
 private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BinauralizationAudioProcessor)
 
-   // [MEM][CHANNEL][SAMPLES]
-   float*** overlap_buffer = NULL;
-   int K = 0;
+   // [MEM][SAMPLES]
+   float** overlap_buffer_left = NULL;
+   float** overlap_buffer_right = NULL;
+
    int MEM = 0;
     
 };

@@ -140,77 +140,82 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
     
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        // move outside of for loop
-        int n = buffer.getNumSamples();
-        auto* channelData = buffer.getWritePointer (channel); 
+     // number of samples inside each buffer
+     n = buffer.getNumSamples();
+     // input data
+     auto* channelData = buffer.getWritePointer (0); 
+     // output left
+     auto* channelLeft = buffer.getWritePointer(0);
+     // outpur right
+     auto* channelRight = buffer.getWritePointer(1);
 
 
-        // allocate overlap_buffer
-        if (ir_update) {
-            // free overlap_buffer from bottom to top
-            if (overlap_buffer != NULL) {
-                for (int i = 0; i < MEM; i++) {
-                    for (int j = 0; j < 2; j++) {
-                        free(overlap_buffer[i][j]);
-                    }
-                    free(overlap_buffer[i]);
-                }
-            }
-
-            K = get_padding_size(n, hrtf_len);
-
-            MEM = K / n;
-
-            // allocate space for overlap add buffer
-            overlap_buffer = (float***)malloc(sizeof(float**) * MEM);
+    // when a new set of IRs is loaded, the overlap_add_buffer has to be allocated accordingly
+    if (ir_update) {
+        // free previously allocated memory (not really efficient but ok for this case, since this should only occur rarely)
+        // only check one buffer, because there is no case where only one of them gets allocated
+        if (overlap_buffer_left != NULL) {
             for (int i = 0; i < MEM; i++) {
-                overlap_buffer[i] = (float**)malloc(sizeof(float*) * 2);
-                for (int j = 0; j < 2; j++) {
-                    overlap_buffer[i][j] = (float*)malloc(sizeof(float) * K);
-                }
+                free(overlap_buffer_left[i]);
+                free(overlap_buffer_right[i]);
             }
-
-            DBG("IR UPDATE DONE");
-            ir_update = false;
+            free(overlap_buffer_left);
+            free(overlap_buffer_right);
         }
+
+        // k >= M + N - 1 (gets set in openIRdirectory())
+        // MEM holds the number of iterations, for which an old convolution result has to be hold to perform the overlap add convolution
+        MEM = k / n;
+
+        // allocate space for overlap add buffer
+        overlap_buffer_left = (float**)malloc(sizeof(float*) * MEM);
+        overlap_buffer_right = (float**)malloc(sizeof(float*) * MEM);
+
+        for (int i = 0; i < MEM; i++) {
+             overlap_buffer_left[i] = (float*)malloc(sizeof(float) * k);
+             overlap_buffer_right[i] = (float*)malloc(sizeof(float) * k);
+        }
+
+        DBG("IR UPDATE DONE");
+        ir_update = false;
+    }
             
-        // perform convolution with loaded impulse response
-        if (!ir_update && ir_ready && performConv) {
+    // perform convolution with loaded impulse response
+    if (!ir_update && ir_ready && performConv) {
 
-            filter_sel = hrtf_sel;
+        // get current HRTF selection from UI-Slider
+        filter_sel = hrtf_buffer.sel;
 
-            // perform fft-based convolution
-            for (int ch = 0; ch < 2; ch++) {
-                // write inputData into overlap_buffer
-                memcpy(overlap_buffer[0][ch], channelData, sizeof(float) * n);
+        // perform fft-based convolution
+        // write inputData into overlap_buffers
+        memcpy(overlap_buffer_left[0], channelData, sizeof(float) * n);
+        memcpy(overlap_buffer_right[0], channelData, sizeof(float) * n);
 
-                // fill space from n to K with zeroes
-                for (int i = n; i < K; i++) {
-                    overlap_buffer[0][ch][i] = 0.;
-                }
-
-                // perform fft-based convolution
-                //// it seems that performing the convolution twice leads to problems...
-                fftw_convolution(K, overlap_buffer[0][ch], hrtf_buffer[filter_sel][ch], overlap_buffer[0][ch]);
-
-                // get new WritePointer (only needed in second ch iteration)
-                channelData = buffer.getWritePointer(ch);
-
-                // write first block into channel Data
-                memcpy(channelData, overlap_buffer[0][ch], sizeof(float) * n);
-                
-                // overlap and add
-                for (int i = 1; i < MEM; i++) {
-                    for (int j = 0; j < n; j++) {
-                        channelData[j] += overlap_buffer[i][ch][j + (n * i)];
-                    }
-                    // shuffle through overlap_buffer
-                    memcpy(overlap_buffer[i][ch], overlap_buffer[i - 1][ch], sizeof(float) * K);
-                } 
-            }
+        // fill space from n to K with zeroes
+        for (int i = n; i < k; i++) {
+            overlap_buffer_left[0][i] = 0.;
+            overlap_buffer_right[0][i] = 0.;
         }
+
+        // perform fft-based convolution
+        fftw_convolution(k, overlap_buffer_left[0], hrtf_buffer.left[filter_sel], overlap_buffer_left[0]);
+        fftw_convolution(k, overlap_buffer_right[0], hrtf_buffer.right[filter_sel], overlap_buffer_right[0]);
+
+        // write first block into channel Data
+        memcpy(channelLeft, overlap_buffer_left[0], sizeof(float) * n);
+        memcpy(channelRight, overlap_buffer_right[0], sizeof(float) * n);
+                
+        // overlap and add
+        for (int i = 1; i < MEM; i++) {
+            for (int j = 0; j < n; j++) {
+                channelLeft[j] += overlap_buffer_left[i][j + (n * i)];
+                channelRight[j] += overlap_buffer_right[i][j + (n * i)];
+            }
+            // shuffle through overlap_buffer
+            memcpy(overlap_buffer_left[i], overlap_buffer_left[i - 1], sizeof(float) * k);
+            memcpy(overlap_buffer_right[i], overlap_buffer_right[i - 1], sizeof(float) * k);
+        } 
+       
     }
 }
 
@@ -274,12 +279,12 @@ void BinauralizationAudioProcessor::normalize(int n, float* data) {
 
 int BinauralizationAudioProcessor::get_padding_size(int n, int m) {
 
-    int K = n + m - 1;
+    int k = n + m - 1;
 
-    if (K % n != 0)
-        K += n - (K % n);
+    if (k % n != 0)
+        k += n - (k % n);
 
-    return K;
+    return k;
 }
 
 void BinauralizationAudioProcessor::fftw_convolution(int n, float* input1, float* input2, float* output) {
