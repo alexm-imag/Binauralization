@@ -34,6 +34,16 @@ BinauralizationAudioProcessorEditor::BinauralizationAudioProcessorEditor (Binaur
     HRTF_Slider.setTextBoxStyle(Slider::TextBoxBelow, 1, 50, 20);
     addAndMakeVisible(HRTF_Slider);
 
+    OpenButton.onClick = [this] {openIRfile(); };
+    OpenButton.setColour(TextButton::buttonColourId, Colour(0xff79ed7f));
+    OpenButton.setColour(TextButton::textColourOffId, Colours::black);
+    addAndMakeVisible(OpenButton);
+
+    SineButton.onClick = [this] {toggleSine(); };
+    SineButton.setColour(TextButton::buttonColourId, Colour(0xff79ed7f));
+    SineButton.setColour(TextButton::textColourOffId, Colours::black);
+    addAndMakeVisible(SineButton);
+
 }
 
 BinauralizationAudioProcessorEditor::~BinauralizationAudioProcessorEditor()
@@ -58,24 +68,23 @@ void BinauralizationAudioProcessorEditor::resized()
     ConvButton.setBounds(200, 75, 100, 50);
     DirButton.setBounds(100, 75, 100, 50);
     HRTF_Slider.setBounds(150, 125, 100, 100);
+    OpenButton.setBounds(200, 230, 100, 50);
+    SineButton.setBounds(100, 230, 100, 50);
 
 }
 
 void BinauralizationAudioProcessorEditor::openIRdirectory() {
-
-    // Usage of FFT is deactivated in ProcessBlock during loading of new HRTF, so new collisons occur
-    audioProcessor.ir_ready = false;
 
     // let user select an IR dir / or select all files (not very user friendly...)
     FileChooser selector("Choose IR directory", File::getSpecialLocation(File::userDesktopDirectory));
 
     // check if something has been selected
     if (selector.browseForMultipleFilesToOpen()) {
-        
+
         int i = 0;
         Array<File> files;
         AudioFormatManager ir_manager;
-        AudioFormatReader* ir_reader;
+        AudioFormatReader* ir_reader = NULL;
 
         // get files from FileChooser
         files = selector.getResults();
@@ -86,8 +95,17 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         // register .wav and .aiff format
         ir_manager.registerBasicFormats();
         // create audio reader according to first audio file
-        // WARNING: this works only audio files are of the same length / dimension!
         ir_reader = ir_manager.createReaderFor(*file_ptr);
+
+        // if an invalid file format has been read, ir_manager returns a NULL pointer
+        if (ir_reader == NULL) {
+            DBG("Invalid format");
+            return;
+        }
+
+        // only set flag, after it has been verified, that a file has been selected and the format is supported.
+        // Usage of FFT is deactivated in ProcessBlock during loading of new HRTF, so new collisons occur
+        audioProcessor.ir_ready = false;
 
         audioProcessor.hrtf_buffer.num_samples = ir_reader->lengthInSamples;
         audioProcessor.hrtf_buffer.num_hrtfs = files.size();
@@ -145,12 +163,12 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
 }
 
 void BinauralizationAudioProcessorEditor::toggleConvolution() {
-
+    /*
     if (!audioProcessor.ir_ready) {
         DBG("NO IR AVAILABLE!");
         return;
     }
-
+    */
     if (!audioProcessor.performConv) {
         audioProcessor.performConv = true;
         ConvButton.setButtonText("Conv Active");
@@ -160,4 +178,55 @@ void BinauralizationAudioProcessorEditor::toggleConvolution() {
         ConvButton.setButtonText("Conv Inactive");
     }
 
+}
+
+void BinauralizationAudioProcessorEditor::toggleSine() {
+
+    if (audioProcessor.sineFlag) {
+        audioProcessor.sineFlag = false;
+        SineButton.setButtonText("Sine Active");
+    }
+
+    else {
+        audioProcessor.sineFlag = true;
+        SineButton.setButtonText("Sine Inactive");
+    }
+        
+}
+
+
+void BinauralizationAudioProcessorEditor::openIRfile() {
+
+    DBG("clicked");
+
+    // let user select an IR file
+    FileChooser selector("Choose IR file", File::getSpecialLocation(File::userDesktopDirectory), "*wav");
+
+    // check if something has been selected
+    if (selector.browseForFileToOpen()) {
+        File ir_file;
+        // store file in IRfile
+        ir_file = selector.getResult();
+
+        // allow .wav and .aiff formats
+        AudioFormatManager ir_manager;
+
+        ir_manager.registerBasicFormats();
+
+        AudioFormatReader* ir_reader = ir_manager.createReaderFor(ir_file);
+
+        AudioBuffer<float> tmp_buffer(2, ir_reader->lengthInSamples);
+
+        ir_reader->read(&tmp_buffer, 0, ir_reader->lengthInSamples, 0, 1, 1);
+
+        // copy AudioBuffer content into audioProcessor context
+        audioProcessor.ir_buffer = tmp_buffer;
+        // set IRhasbeenLoaded flag
+        audioProcessor.ir_flag = true;
+
+        DBG("file loaded");
+        return;
+    }
+
+    DBG("loading failed");
 }

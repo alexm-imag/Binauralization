@@ -34,9 +34,13 @@ private:
     TextButton DirButton{ "Open IR dir" };
     TextButton ConvButton{ "Conv Inactive" };
     Slider     HRTF_Slider;
+    TextButton OpenButton{ "Open IR file" };
+    TextButton SineButton{ "Sine Inactive" };
 
     void openIRdirectory();
     void toggleConvolution();
+    void toggleSine();
+    void openIRfile();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BinauralizationAudioProcessorEditor)
 

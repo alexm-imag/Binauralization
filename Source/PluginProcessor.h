@@ -70,6 +70,7 @@ public:
     bool ir_update = false;
     bool ir_ready = false;
     bool performConv = false;
+    bool sineFlag = false;
 
     int n = 0;
     int k = 0;
@@ -81,6 +82,19 @@ public:
         int num_samples = 0;
         int sel = 0;
     } hrtf_buffer;
+
+    juce::AudioBuffer<float> ir_buffer;
+    fftwf_complex* ir_left;
+    fftwf_complex* ir_right;
+    bool ir_flag = false;
+    bool conv_flag = false;
+    float* current_left = NULL;
+    float* current_right = NULL;
+    float* previous_left = NULL;
+    float* previous_right = NULL;
+
+    float* sine = NULL;
+    bool sineInit = false;
     
 private:
     //==============================================================================

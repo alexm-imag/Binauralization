@@ -189,8 +189,8 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
 
         // perform fft-based convolution
         // write inputData into overlap_buffers
-        memcpy(overlap_buffer_left[0], channelData, sizeof(float) * n);
-        memcpy(overlap_buffer_right[0], channelData, sizeof(float) * n);
+        memcpy(overlap_buffer_left[0], channelData, (sizeof(float) * n));
+        memcpy(overlap_buffer_right[0], channelData, (sizeof(float) * n));
 
         // fill space from n to k with zeroes
         for (int i = n; i < k; i++) {
@@ -205,8 +205,8 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         fftw_convolution(k, overlap_buffer_right[0], hrtf_buffer.right[filter_sel], overlap_buffer_right[0]);
 
         // write first block into channel Data
-        memcpy(channelLeft, overlap_buffer_left[0], sizeof(float) * n);
-        memcpy(channelRight, overlap_buffer_right[0], sizeof(float) * n);
+        memcpy(channelLeft, overlap_buffer_left[0], (sizeof(float) * n));
+        memcpy(channelRight, overlap_buffer_right[0], (sizeof(float) * n));
                 
         // overlap and add
         for (int i = 1; i < MEM; i++) {
@@ -220,6 +220,140 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         } 
        
     }
+    
+    else {
+        if (ir_flag) {
+            ir_flag = false;
+            int m = ir_buffer.getNumSamples();
+            //k = get_padding_size(n, m);
+            //MEM = (k / n > 2) ? k / n : 2;
+            int spec_len = k / 2 + 1;
+
+            ir_left = fftwf_alloc_complex(spec_len);   // (k/2 + 1)
+            ir_right = fftwf_alloc_complex(spec_len);
+
+            ir_buffer.setSize(2, k, true);
+
+            for (int i = m; i < k; i++) {
+                ir_buffer.getWritePointer(0)[i] = 0;
+                ir_buffer.getWritePointer(1)[i] = 0;
+            }
+
+            current_left = (float*)malloc(sizeof(float) * k);
+            current_right = (float*)malloc(sizeof(float) * k);
+            previous_left = (float*)malloc(sizeof(float) * k);
+            previous_right = (float*)malloc(sizeof(float) * k);
+
+            for (int i = 0; i < k; i++) {
+                previous_left[i] = 0;
+                previous_right[i] = 0;
+            }
+
+            perform_fft(k, ir_buffer.getWritePointer(0), ir_left);
+            perform_fft(k, ir_buffer.getWritePointer(1), ir_right);
+            //conv_flag = true;
+        }
+
+        int m = 128;
+        // make k an even number
+        k = (n + m - 1) % 2 ? n + m : n + m - 1;
+
+        float* data1 = (float*)malloc(sizeof(float) * (k+2));
+        float* data2 = (float*)malloc(sizeof(float) * (k+2));
+
+        // use sine test-tone
+        if (sineFlag) {
+            if (!sineInit) {
+                sine = (float*)malloc(sizeof(float) * k);
+                double f = 375;
+                for (int i = 0; i < n; i++) {
+                    sine[i] = 0.473 * cos(2 * juce::double_Pi * f * i / 48000.);
+                }
+                sineInit = true;
+            }
+            memcpy(data1, sine, sizeof(float)* n);
+            memcpy(data2, sine, sizeof(float)* n);
+        }
+
+        else {
+            memcpy(data1, channelData, sizeof(float) * n);
+            memcpy(data2, channelData, sizeof(float) * n);
+        }
+
+
+        for (int i = n; i < k+2; i++) {
+            data1[i] = 0;
+            data2[i] = 0;
+        }
+        int b = k / 2 + 1;
+        fftwf_complex* tmp = fftwf_alloc_complex(b);
+        fftwf_complex* tmp2 = fftwf_alloc_complex(b);
+        perform_fft(k, data1, tmp);
+        perform_fft(k, data2, tmp2);
+
+        if (performConv) {
+            for (int i = 0; i < k/2 + 1; i++) {
+                tmp[i][REAL] = tmp[i][REAL] * ir_left[i][REAL] - tmp[i][IMAG] * ir_left[i][IMAG];
+                tmp[i][IMAG] = tmp[i][REAL] * ir_left[i][IMAG] + tmp[i][IMAG] * ir_left[i][REAL];
+                tmp2[i][REAL] = tmp2[i][REAL] * ir_right[i][REAL] - tmp2[i][IMAG] * ir_right[i][IMAG];
+                tmp2[i][IMAG] = tmp2[i][REAL] * ir_right[i][IMAG] + tmp2[i][IMAG] * ir_right[i][REAL];
+            }    
+            perform_ifft(k, tmp, current_left);
+            perform_ifft(k, tmp2, current_right);
+            normalize(k, current_left);
+            normalize(k, current_right);
+
+            memcpy(data1, current_left, sizeof(float)* n);
+            memcpy(data2, current_right, sizeof(float)* n);
+
+            for (int i = 0; i < n; i++) {
+                data1[i] += previous_left[i+n];
+                data2[i] += previous_right[i+n];
+            }
+
+            memcpy(previous_left, current_left, sizeof(float) * k);
+            memcpy(previous_right, current_right, sizeof(float) * k);
+        }
+        else {
+            perform_ifft(k, tmp, data1);
+            perform_ifft(k, tmp2, data2);
+            normalize(k, data1);
+            normalize(k, data2);
+        }
+
+        memcpy(channelLeft, data1, sizeof(float) * n);
+        memcpy(channelRight, data2, sizeof(float) * n);
+
+        free(data1);
+        free(data2);
+        fftwf_free(tmp);
+        fftwf_free(tmp2);
+
+
+        /*
+        if (conv_flag) {
+            float* data = (float*)malloc(sizeof(float) * k);
+            memcpy(data, channelData, sizeof(float) * n);
+            for (int i = n; i < k; i++)
+                data[i] = 0;
+
+            fftw_convolution(k, data, ir_left, current_left);
+            fftw_convolution(k, data, ir_right, current_right);
+
+            for (int i = 0; i < n; i++) {
+                channelLeft[i] = current_left[i];
+                channelRight[i] = current_right[i];
+                channelLeft[i] += previous_left[i+n];
+                channelRight[i] += previous_right[i+n];
+            }
+
+            memcpy(previous_left, current_left, sizeof(float)* k);
+            memcpy(previous_right, current_right, sizeof(float)* k);
+        }
+        */
+
+    }
+    
 }
 
 //==============================================================================
@@ -257,13 +391,14 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 
 void BinauralizationAudioProcessor::perform_fft(int n, float* input, fftwf_complex* output) {
 
+    // faster if one plan of this param set (no input/output) already exists?
     fftwf_plan plan = fftwf_plan_dft_r2c_1d(n, input, output, FFTW_ESTIMATE);  
     fftwf_execute(plan);
     fftwf_destroy_plan(plan);
     fftwf_cleanup();
 
-}
 
+}
 void BinauralizationAudioProcessor::perform_ifft(int n, fftwf_complex* input, float* output) {
 
     fftwf_plan plan = fftwf_plan_dft_c2r_1d(n, input, output, FFTW_ESTIMATE);
@@ -290,19 +425,21 @@ int BinauralizationAudioProcessor::get_padding_size(int n, int m) {
     return k;
 }
 
-void BinauralizationAudioProcessor::fftw_convolution(int n, float* input1, float* input2, float* output) {
+void BinauralizationAudioProcessor::fftw_convolution(int n ,float* input1, float* input2, float* output) {
 
+    int m = n / 2 + 1;
 
-    fftwf_complex* spec1 = fftwf_alloc_complex(n);
-    fftwf_complex* spec2 = fftwf_alloc_complex(n);
+    fftwf_complex* spec1 = fftwf_alloc_complex(m);
+    fftwf_complex* spec2 = fftwf_alloc_complex(m);
 
     perform_fft(n, input1, spec1);
     perform_fft(n, input2, spec2);
 
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < m; i++) {
         spec1[i][REAL] = spec1[i][REAL] * spec2[i][REAL] - spec1[i][IMAG] * spec2[i][IMAG];
         spec1[i][IMAG] = spec1[i][REAL] * spec2[i][IMAG] + spec1[i][IMAG] * spec2[i][REAL];
     }
+
     perform_ifft(n, spec1, output);
 
     normalize(n, output);
@@ -312,16 +449,19 @@ void BinauralizationAudioProcessor::fftw_convolution(int n, float* input1, float
 
 }
 
-void BinauralizationAudioProcessor::fftw_convolution(int n, float* input1, fftwf_complex* input2, float* output) {
+void BinauralizationAudioProcessor::fftw_convolution(int n ,float* input1, fftwf_complex* input2, float* output) {
 
-    fftwf_complex* spec1 = fftwf_alloc_complex(n);
+    int m = n / 2 + 1;
+
+    fftwf_complex* spec1 = fftwf_alloc_complex(m);
 
     perform_fft(n, input1, spec1);
     
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < m; i++) {       
         spec1[i][REAL] = spec1[i][REAL] * input2[i][REAL] - spec1[i][IMAG] * input2[i][IMAG];
         spec1[i][IMAG] = spec1[i][REAL] * input2[i][IMAG] + spec1[i][IMAG] * input2[i][REAL];
     }
+
     
     perform_ifft(n, spec1, output);
 
