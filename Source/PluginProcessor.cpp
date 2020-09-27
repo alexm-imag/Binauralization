@@ -225,103 +225,12 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
             // shuffle through overlap_buffer
             memcpy(overlap_buffer_left[i], overlap_buffer_left[i - 1], sizeof(float) * k);
             memcpy(overlap_buffer_right[i], overlap_buffer_right[i - 1], sizeof(float) * k);
-        } 
-       
+        }    
     }
-    /*
     else {
-        if (ir_flag) {
-            ir_flag = false;
-            int m = ir_buffer.getNumSamples();
-            
-            // make k an even number
-            k = (n + m - 1) % 2 ? n + m : n + m - 1;
-
-            int spec_len = k / 2 + 1;
-
-            ir_left = fftwf_alloc_complex(spec_len);
-            ir_right = fftwf_alloc_complex(spec_len);
-
-            ir_buffer.setSize(2, k+2, true);
-
-            for (int i = m; i < k+2; i++) {
-                ir_buffer.getWritePointer(0)[i] = 0;
-                ir_buffer.getWritePointer(1)[i] = 0;
-            }
-
-            current_left = (float*)malloc(sizeof(float) * k);
-            current_right = (float*)malloc(sizeof(float) * k);
-            previous_left = (float*)malloc(sizeof(float) * k);
-            previous_right = (float*)malloc(sizeof(float) * k);
-
-            for (int i = 0; i < k; i++) {
-                previous_left[i] = 0;
-                previous_right[i] = 0;
-            }
-
-            perform_fft(k, ir_buffer.getWritePointer(0), ir_left);
-            perform_fft(k, ir_buffer.getWritePointer(1), ir_right);
-        }
-
-        // use sine test-tone
-        if (sineFlag) {
-            if (!sineInit) {
-                sine = (float*)malloc(sizeof(float) * n);
-                // set f to n * 93.75 to have a complete wave inside sine
-                double f = 375;
-                for (int i = 0; i < n; i++) {
-                    sine[i] = 0.473 * cos(2 * juce::double_Pi * f * i / 48000.);    // 0.473
-                }
-                sineInit = true;
-            }
-            memcpy(channelData, sine, sizeof(float)* n);
-        }
-
-        if (performConv) {
-            // allocate k+2 sized data buffer
-            float* data_left = (float*)malloc(sizeof(float) * (k + 2));
-            float* data_right = (float*)malloc(sizeof(float) * (k + 2));
-
-            memcpy(data_left, channelData, sizeof(float)* n);
-            memcpy(data_right, channelData, sizeof(float)* n);
-
-            // pad data with zeros
-            for (int i = n; i < (k + 2); i++) {
-                data_left[i] = 0;
-                data_right[i] = 0;
-            }
-
-            fftw_convolution(k, data_left, ir_left, current_left);
-            fftw_convolution(k, data_right, ir_right, current_right);
-
-            // overlap add
-            for (int i = 0; i < n; i++) {
-                data_left[i] = current_left[i];
-                data_right[i] = current_right[i];
-            }
-            for (int i = 0; i < k - n; i++) {
-                data_left[i] += previous_left[i + n];
-                data_right[i] += previous_right[i + n];
-            }
-
-            memcpy(previous_left, current_left, sizeof(float) * k);
-            memcpy(previous_right, current_right, sizeof(float) * k);
-
-            memcpy(channelLeft, data_left, sizeof(float)* n);
-            memcpy(channelRight, data_right, sizeof(float)* n);
-
-            free(data_left);
-            free(data_right);
-            // maybe allocate and initialize data at loading of IR file?
-        }
-        
-        else {
-            memcpy(channelLeft, channelData, sizeof(float)* n);
-            memcpy(channelRight, channelData, sizeof(float)* n);
-        }
-        
+        memcpy(channelLeft, channelData, sizeof(float) * n);
+        memcpy(channelRight, channelData, sizeof(float) * n);
     }
-    */
     
 }
 

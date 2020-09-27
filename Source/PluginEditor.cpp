@@ -112,10 +112,6 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         
         // free allocated space for hrtf_buffer
         if (audioProcessor.hrtf_buffer.left != NULL) {
-            //for (int i = 0; i < audioProcessor.hrtf_buffer.num_hrtfs; i++) {
-                //free(audioProcessor.hrtf_buffer.left[i]);
-                //free(audioProcessor.hrtf_buffer.right[i]);
-            //}
             free(audioProcessor.hrtf_buffer.left);
             free(audioProcessor.hrtf_buffer.right);
         }
@@ -165,12 +161,12 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
 }
 
 void BinauralizationAudioProcessorEditor::toggleConvolution() {
-    /*
+    
     if (!audioProcessor.ir_ready) {
         DBG("NO IR AVAILABLE!");
         return;
     }
-    */
+    
     if (!audioProcessor.performConv) {
         audioProcessor.performConv = true;
         ConvButton.setButtonText("Conv Active");
