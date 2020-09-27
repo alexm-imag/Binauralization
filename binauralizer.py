@@ -6,11 +6,9 @@ Created on Thu Sep 17 22:51:07 2020
 """
 
 import numpy as np
-from scipy.fftpack import fft
+import scipy.fft
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
-import pyaudio     #sudo apt-get install python-pyaudio
-
 
 # block length
 n = 512
@@ -36,7 +34,7 @@ channelRight = np.zeros(n)
 padded_ir_data_left = np.zeros(k)
 padded_ir_data_right = np.zeros(k)
 sine = np.zeros(n)
-#t_vec = np.zeros(n)
+t_vec = np.zeros(n)
 data1 = np.zeros(k)
 data2 = np.zeros(k)
 previous_left = np.zeros(k)
@@ -49,11 +47,11 @@ padded_ir_data_right[0:128] = ir_data_scaled[0:128, 1]
 
 
 # use sine wave as input data
-f = 93.75 * 4
+f = 375         # set f to n * 93.75 to have a complete wave inside sine
 
 for i in range (0,n): 
     sine[i] = 0.473 * np.cos(2*np.pi*f * i/samplerate)
-    #t_vec[i] = i
+    t_vec[i] = i
 
 #plt.plot(t_vec, sine)
 
@@ -62,44 +60,69 @@ data1[0:n] = sine[0:n]
 data2[0:n] = sine[0:n]
 
 # get spectres
-ir_left = np.fft.rfft(padded_ir_data_left)
-ir_right = np.fft.rfft(padded_ir_data_right) # ,k)
-
-tmp1 = np.fft.rfft(data1)
-tmp2 = np.fft.rfft(data2)
+ir_left = scipy.fft.fft(padded_ir_data_left)
+ir_right = scipy.fft.fft(padded_ir_data_right)
 
 
-for m in range(0,2):
+tmp1 = scipy.fft.fft(data1)
+tmp2 = scipy.fft.fft(data2)
+
+
+for m in range(0,2):  
     conv_left = tmp1 * ir_left
     conv_right = tmp2 * ir_right
     
-    current_left = np.fft.irfft(conv_left)
-    current_right = np.fft.irfft(conv_right)
-    
-    #current_left /= k
-    #current_right /= k
-    
+    current_left = np.real(scipy.fft.ifft(conv_left))
+    current_right = np.real(scipy.fft.ifft(conv_right))
+      
+    # normalization after ifft is not required here!
+
     channelLeft[0:n] = current_left[0:n]
-    channelRight[0:n] = previous_left[0:n]
-    channelLeft[0:k-n] = current_left[n:k]
-    channelRight[0:k-n] = previous_right[n:k]
+    channelRight[0:n] = current_right[0:n]
     
+    for i in range (0, k-n):
+        channelLeft[i] += previous_left[i+n]
+        channelRight[i] += previous_right[i+n]
+
     previous_left = current_left
     previous_right = current_right
 
 
-# play audio
-#PyAudio = pyaudio.PyAudio     #initialize pyaudio
+fig, ax = plt.subplots()
+plt.plot(t_vec, channelLeft)
+plt.plot(t_vec, channelRight)
+plt.grid()
+plt.show()
 
-#channelOut = np.zero
+fig2, ax2 = plt.subplots()
+plt.plot(t_vec, current_left[0:n])
+plt.plot(t_vec, current_right[0:n])
+plt.grid()
+plt.show()
 
-#p = PyAudio()
-#stream = p.open(format = p.get_format_from_width(1), 
-#                channels = 1, 
-#                rate = samplerate, 
-#                output = True)
+fig3, ax3 = plt.subplots()
+plt.plot(t_vec[0:k-n], previous_left[n:k])
+plt.plot(t_vec[0:k-n], previous_right[n:k])
+plt.grid()
+plt.show()
 
-#stream.write(channelLeft)
-#stream.stop_stream()
-#stream.close()
-#p.terminate()
+fig4, ax4 = plt.subplots()
+plt.plot(t_vec[0:k-n], channelLeft[0:k-n])
+plt.plot(t_vec[0:k-n], channelRight[0:k-n])
+plt.title("output 0 to k-n")
+plt.grid()
+plt.show()
+
+
+#N = 320
+#T = 1 / 48000
+#pf = np.linspace(0.0, 1.0/(2.0*T), N/2)
+
+# use numpy conv
+
+
+
+#fig, ax = plt.subplots()
+#ax.plot(plt_freq, 2.0/(N+1) * np.abs(current_left))
+#plt.show()
+
