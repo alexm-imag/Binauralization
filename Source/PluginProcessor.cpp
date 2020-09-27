@@ -149,11 +149,23 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
      // outpur right
      auto* channelRight = buffer.getWritePointer(1);
 
+     // use sine test-tone
+     if (sineFlag) {
+         if (!sineInit) {
+             sine = (float*)malloc(sizeof(float) * n);
+             // set f to n * 93.75 to have a complete wave inside sine
+             double f = 375;
+             for (int i = 0; i < n; i++) {
+                 sine[i] = 0.473 * cos(2 * juce::double_Pi * f * i / 48000.);    // 0.473
+             }
+             sineInit = true;
+         }
+         memcpy(channelData, sine, sizeof(float) * n);
+     }
 
     // when a new set of IRs is loaded, the overlap_add_buffer has to be allocated accordingly
     if (ir_update) {
         // free previously allocated memory (not really efficient but ok for this case, since this should only occur rarely)
-        // only check one buffer, because there is no case where only one of them gets allocated
         if (overlap_buffer_left != NULL) {
             for (int i = 0; i < MEM; i++) {
                 free(overlap_buffer_left[i]);
@@ -163,9 +175,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
             free(overlap_buffer_right);
         }
 
-        // k >= M + N - 1 (gets set in openIRdirectory())
         // MEM holds the number of iterations, for which an old convolution result has to be hold to perform the overlap add convolution
-        //MEM = k / n;
         MEM = (k / n > 2) ? k / n : 2;
 
         // allocate space for overlap add buffer
@@ -173,8 +183,8 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         overlap_buffer_right = (float**)malloc(sizeof(float*) * MEM);
 
         for (int i = 0; i < MEM; i++) {
-             overlap_buffer_left[i] = (float*)malloc(sizeof(float) * k);
-             overlap_buffer_right[i] = (float*)malloc(sizeof(float) * k);
+             overlap_buffer_left[i] = (float*)malloc(sizeof(float) * (k+2));
+             overlap_buffer_right[i] = (float*)malloc(sizeof(float) * (k+2));
         }
 
         DBG("IR UPDATE DONE");
@@ -186,7 +196,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
 
         // get current HRTF selection from UI-Slider
         filter_sel = hrtf_buffer.sel;
-
+        
         // perform fft-based convolution
         // write inputData into overlap_buffers
         memcpy(overlap_buffer_left[0], channelData, (sizeof(float) * n));
@@ -197,20 +207,18 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
             overlap_buffer_left[0][i] = 0.;
             overlap_buffer_right[0][i] = 0.;
         }
-
-        // some selections lead to a lot of noise... (e.g. 0, 4)
-
+        
         // perform fft-based convolution
         fftw_convolution(k, overlap_buffer_left[0], hrtf_buffer.left[filter_sel], overlap_buffer_left[0]);
         fftw_convolution(k, overlap_buffer_right[0], hrtf_buffer.right[filter_sel], overlap_buffer_right[0]);
-
+        
         // write first block into channel Data
         memcpy(channelLeft, overlap_buffer_left[0], (sizeof(float) * n));
         memcpy(channelRight, overlap_buffer_right[0], (sizeof(float) * n));
                 
         // overlap and add
         for (int i = 1; i < MEM; i++) {
-            for (int j = 0; j < n; j++) {
+            for (int j = 0; j < k-n; j++) {
                 channelLeft[j] += overlap_buffer_left[i][j + (n * i)];
                 channelRight[j] += overlap_buffer_right[i][j + (n * i)];
             }
@@ -220,7 +228,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         } 
        
     }
-    
+    /*
     else {
         if (ir_flag) {
             ir_flag = false;
@@ -255,8 +263,6 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
             perform_fft(k, ir_buffer.getWritePointer(1), ir_right);
         }
 
-        float* data = (float*)malloc(sizeof(float) * n);
-
         // use sine test-tone
         if (sineFlag) {
             if (!sineInit) {
@@ -268,7 +274,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
                 }
                 sineInit = true;
             }
-            memcpy(data, sine, sizeof(float)* n);
+            memcpy(channelData, sine, sizeof(float)* n);
         }
 
         if (performConv) {
@@ -276,8 +282,8 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
             float* data_left = (float*)malloc(sizeof(float) * (k + 2));
             float* data_right = (float*)malloc(sizeof(float) * (k + 2));
 
-            memcpy(data_left, data, sizeof(float)* n);
-            memcpy(data_right, data, sizeof(float)* n);
+            memcpy(data_left, channelData, sizeof(float)* n);
+            memcpy(data_right, channelData, sizeof(float)* n);
 
             // pad data with zeros
             for (int i = n; i < (k + 2); i++) {
@@ -310,12 +316,12 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         }
         
         else {
-            memcpy(channelLeft, data, sizeof(float)* n);
-            memcpy(channelRight, data, sizeof(float)* n);
+            memcpy(channelLeft, channelData, sizeof(float)* n);
+            memcpy(channelRight, channelData, sizeof(float)* n);
         }
         
-        free(data);
     }
+    */
     
 }
 
@@ -378,12 +384,9 @@ void BinauralizationAudioProcessor::normalize(int n, float* data) {
     }
 }
 
-int BinauralizationAudioProcessor::get_padding_size(int n, int m) {
+int BinauralizationAudioProcessor::set_padding_size(int n, int m) {
 
-    int k = n + m - 1;
-    // leaving this out leads to problems... probably within adding...
-    if (k % n != 0)
-        k += n - (k % n);
+    k = (n + m - 1) % 2 ? n + m : n + m - 1;
     
     return k;
 }

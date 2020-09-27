@@ -121,7 +121,8 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         }
 
         // k >= M + N - 1 (length IR, length data - 1)
-        audioProcessor.k = audioProcessor.get_padding_size(audioProcessor.n, audioProcessor.hrtf_buffer.num_samples);
+        // k is a class member of audioProcessor
+        audioProcessor.set_padding_size(audioProcessor.n, audioProcessor.hrtf_buffer.num_samples);
 
         // allocate space for x HRFT spectra
         audioProcessor.hrtf_buffer.left = (fftwf_complex**)malloc(sizeof(fftwf_complex*) * files.size());
@@ -134,6 +135,7 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
 
         // create temporary AudioBuffer of approriate size
         AudioBuffer<float> tmp_buffer(2, audioProcessor.k);
+        tmp_buffer.clear();
         
         // iterate through array of files
         i = 0;
@@ -145,8 +147,8 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
             ir_reader->read(&tmp_buffer, 0, ir_reader->lengthInSamples, 0, 1, 1);
 
             // perform fft on both channels for each HRTF file and store result in hrtf_buffer
-            audioProcessor.perform_fft(ir_reader->lengthInSamples, tmp_buffer.getWritePointer(0), audioProcessor.hrtf_buffer.left[i]);
-            audioProcessor.perform_fft(ir_reader->lengthInSamples, tmp_buffer.getWritePointer(1), audioProcessor.hrtf_buffer.right[i]);
+            audioProcessor.perform_fft(audioProcessor.k, tmp_buffer.getWritePointer(0), audioProcessor.hrtf_buffer.left[i]);
+            audioProcessor.perform_fft(audioProcessor.k, tmp_buffer.getWritePointer(1), audioProcessor.hrtf_buffer.right[i]);
 
         } while (*(file_ptr + i++) != files.getLast());
 

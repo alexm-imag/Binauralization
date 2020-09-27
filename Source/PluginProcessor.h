@@ -65,7 +65,7 @@ public:
     void perform_fft(int n, float* input, fftwf_complex* output);
     void perform_ifft(int n, fftwf_complex* input, float* output);
     void normalize(int n, float* data);
-    int get_padding_size(int n, int m);
+    int set_padding_size(int n, int m);
 
 
     bool ir_update = false;
