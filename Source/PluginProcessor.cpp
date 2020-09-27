@@ -225,11 +225,13 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
         if (ir_flag) {
             ir_flag = false;
             int m = ir_buffer.getNumSamples();
-            //k = get_padding_size(n, m);
-            //MEM = (k / n > 2) ? k / n : 2;
+            
+            // make k an even number
+            k = (n + m - 1) % 2 ? n + m : n + m - 1;
+
             int spec_len = k / 2 + 1;
 
-            ir_left = fftwf_alloc_complex(spec_len);   // (k/2 + 1)
+            ir_left = fftwf_alloc_complex(spec_len);
             ir_right = fftwf_alloc_complex(spec_len);
 
             ir_buffer.setSize(2, k+2, true);
@@ -253,17 +255,12 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
             perform_fft(k, ir_buffer.getWritePointer(1), ir_right);
         }
 
-        int m = 128;
-        // make k an even number
-        k = (n + m - 1) % 2 ? n + m : n + m - 1;
-
-        float* data1 = (float*)malloc(sizeof(float) * (k+2));  
-        float* data2 = (float*)malloc(sizeof(float) * (k+2));
+        float* data = (float*)malloc(sizeof(float) * n);
 
         // use sine test-tone
         if (sineFlag) {
             if (!sineInit) {
-                sine = (float*)malloc(sizeof(float) * k);
+                sine = (float*)malloc(sizeof(float) * n);
                 // set f to n * 93.75 to have a complete wave inside sine
                 double f = 375;
                 for (int i = 0; i < n; i++) {
@@ -271,99 +268,53 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
                 }
                 sineInit = true;
             }
-            memcpy(data1, sine, sizeof(float)* n);
-            memcpy(data2, sine, sizeof(float)* n);
+            memcpy(data, sine, sizeof(float)* n);
         }
-        // use audio input
-        else {
-            memcpy(data1, channelData, sizeof(float) * n);
-            memcpy(data2, channelData, sizeof(float) * n);
-        }
-        // pad data with zeros
-        for (int i = n; i < (k+2); i++) {  
-            data1[i] = 0;
-            data2[i] = 0;
-        }
-        // FFTW gives N/2+1 complex values as a result of a N-sized real-valued FFT
-        int b = k / 2 + 1;
-        fftwf_complex* tmp = fftwf_alloc_complex(b);
-        fftwf_complex* tmp2 = fftwf_alloc_complex(b);
-        fftwf_complex* result1 = fftwf_alloc_complex(b);
-        fftwf_complex* result2 = fftwf_alloc_complex(b);
-
-        perform_fft(k, data1, tmp);
-        perform_fft(k, data2, tmp2);
 
         if (performConv) {
-            // perform complex multiplication
-            for (int i = 0; i < k/2 + 1; i++) {
-                result1[i][REAL] = tmp[i][REAL] * ir_left[i][REAL] - tmp[i][IMAG] * ir_left[i][IMAG];
-                result1[i][IMAG] = tmp[i][REAL] * ir_left[i][IMAG] + tmp[i][IMAG] * ir_left[i][REAL];
-                result2[i][REAL] = tmp2[i][REAL] * ir_right[i][REAL] - tmp2[i][IMAG] * ir_right[i][IMAG];
-                result2[i][IMAG] = tmp2[i][REAL] * ir_right[i][IMAG] + tmp2[i][IMAG] * ir_right[i][REAL];
-            }    
-            // re-gain time-domain signal via ifft
-            perform_ifft(k, result1, current_left);
-            perform_ifft(k, result2, current_right);
-            // normalize output of ifft (FFTW scaled N based FFT-IFFT by N)
-            normalize(k, current_left);
-            normalize(k, current_right);
+            // allocate k+2 sized data buffer
+            float* data_left = (float*)malloc(sizeof(float) * (k + 2));
+            float* data_right = (float*)malloc(sizeof(float) * (k + 2));
+
+            memcpy(data_left, data, sizeof(float)* n);
+            memcpy(data_right, data, sizeof(float)* n);
+
+            // pad data with zeros
+            for (int i = n; i < (k + 2); i++) {
+                data_left[i] = 0;
+                data_right[i] = 0;
+            }
+
+            fftw_convolution(k, data_left, ir_left, current_left);
+            fftw_convolution(k, data_right, ir_right, current_right);
 
             // overlap add
             for (int i = 0; i < n; i++) {
-                data1[i] = current_left[i];
-                data2[i] = current_right[i];
+                data_left[i] = current_left[i];
+                data_right[i] = current_right[i];
             }
             for (int i = 0; i < k - n; i++) {
-                data1[i] += previous_left[i + n];
-                data2[i] += previous_right[i + n];
+                data_left[i] += previous_left[i + n];
+                data_right[i] += previous_right[i + n];
             }
 
             memcpy(previous_left, current_left, sizeof(float) * k);
             memcpy(previous_right, current_right, sizeof(float) * k);
-        }
 
-        // simply perform pass-through fft-ifft if !performConv
+            memcpy(channelLeft, data_left, sizeof(float)* n);
+            memcpy(channelRight, data_right, sizeof(float)* n);
+
+            free(data_left);
+            free(data_right);
+            // maybe allocate and initialize data at loading of IR file?
+        }
+        
         else {
-            perform_ifft(k, tmp, data1);
-            perform_ifft(k, tmp2, data2);
-            normalize(k, data1);
-            normalize(k, data2);
+            memcpy(channelLeft, data, sizeof(float)* n);
+            memcpy(channelRight, data, sizeof(float)* n);
         }
-
-        memcpy(channelLeft, data1, sizeof(float) * n);
-        memcpy(channelRight, data2, sizeof(float) * n);
-
-        free(data1);
-        free(data2);
-        fftwf_free(tmp);
-        fftwf_free(tmp2);
-        fftwf_free(result1);
-        fftwf_free(result2);
-
-
-        /*
-        if (conv_flag) {
-            float* data = (float*)malloc(sizeof(float) * k);
-            memcpy(data, channelData, sizeof(float) * n);
-            for (int i = n; i < k; i++)
-                data[i] = 0;
-
-            fftw_convolution(k, data, ir_left, current_left);
-            fftw_convolution(k, data, ir_right, current_right);
-
-            for (int i = 0; i < n; i++) {
-                channelLeft[i] = current_left[i];
-                channelRight[i] = current_right[i];
-                channelLeft[i] += previous_left[i+n];
-                channelRight[i] += previous_right[i+n];
-            }
-
-            memcpy(previous_left, current_left, sizeof(float)* k);
-            memcpy(previous_right, current_right, sizeof(float)* k);
-        }
-        */
-
+        
+        free(data);
     }
     
 }
@@ -439,46 +390,73 @@ int BinauralizationAudioProcessor::get_padding_size(int n, int m) {
 
 void BinauralizationAudioProcessor::fftw_convolution(int n ,float* input1, float* input2, float* output) {
 
+    // FFTW gives N/2+1 complex values as a result of a N-sized real-valued FFT
     int m = n / 2 + 1;
 
     fftwf_complex* spec1 = fftwf_alloc_complex(m);
     fftwf_complex* spec2 = fftwf_alloc_complex(m);
+    fftwf_complex* result = fftwf_alloc_complex(m);
 
     perform_fft(n, input1, spec1);
     perform_fft(n, input2, spec2);
 
     for (int i = 0; i < m; i++) {
-        spec1[i][REAL] = spec1[i][REAL] * spec2[i][REAL] - spec1[i][IMAG] * spec2[i][IMAG];
-        spec1[i][IMAG] = spec1[i][REAL] * spec2[i][IMAG] + spec1[i][IMAG] * spec2[i][REAL];
+        result[i][REAL] = spec1[i][REAL] * spec2[i][REAL] - spec1[i][IMAG] * spec2[i][IMAG];
+        result[i][IMAG] = spec1[i][REAL] * spec2[i][IMAG] + spec1[i][IMAG] * spec2[i][REAL];
     }
 
-    perform_ifft(n, spec1, output);
+    perform_ifft(n, result, output);
 
     normalize(n, output);
 
     fftwf_free(spec1);
     fftwf_free(spec2);
+    fftwf_free(result);
 
 }
 
 void BinauralizationAudioProcessor::fftw_convolution(int n ,float* input1, fftwf_complex* input2, float* output) {
 
+    // FFTW gives N/2+1 complex values as a result of a N-sized real-valued FFT
     int m = n / 2 + 1;
 
     fftwf_complex* spec1 = fftwf_alloc_complex(m);
+    fftwf_complex* result = fftwf_alloc_complex(m);
 
     perform_fft(n, input1, spec1);
     
     for (int i = 0; i < m; i++) {       
-        spec1[i][REAL] = spec1[i][REAL] * input2[i][REAL] - spec1[i][IMAG] * input2[i][IMAG];
-        spec1[i][IMAG] = spec1[i][REAL] * input2[i][IMAG] + spec1[i][IMAG] * input2[i][REAL];
+        result[i][REAL] = spec1[i][REAL] * input2[i][REAL] - spec1[i][IMAG] * input2[i][IMAG];
+        result[i][IMAG] = spec1[i][REAL] * input2[i][IMAG] + spec1[i][IMAG] * input2[i][REAL];
     }
 
     
-    perform_ifft(n, spec1, output);
+    perform_ifft(n, result, output);
 
     normalize(n, output);
 
     fftwf_free(spec1);
+    fftwf_free(result);
+
+}
+
+void BinauralizationAudioProcessor::fftw_convolution(int n, fftwf_complex* input1, fftwf_complex* input2, float* output) {
+
+    // FFTW gives N/2+1 complex values as a result of a N-sized real-valued FFT
+    int m = n / 2 + 1;
+
+    fftwf_complex* result = fftwf_alloc_complex(m);
+
+    for (int i = 0; i < m; i++) {
+        result[i][REAL] = input1[i][REAL] * input2[i][REAL] - input1[i][IMAG] * input2[i][IMAG];
+        result[i][IMAG] = input1[i][REAL] * input2[i][IMAG] + input1[i][IMAG] * input2[i][REAL];
+    }
+
+    perform_ifft(n, result, output);
+
+    normalize(n, output);
+
+    fftwf_free(result);
+
 
 }
