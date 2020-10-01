@@ -36,10 +36,12 @@ private:
     Slider     HRTF_Slider;
     TextButton OpenButton{ "Open IR file" };
     TextButton SineButton{ "Sine Inactive" };
+    TextButton NoiseButton{ "Noise Inactive" };
 
     void openIRdirectory();
     void toggleConvolution();
     void toggleSine();
+    void toggleNoise();
     void openIRfile();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BinauralizationAudioProcessorEditor)

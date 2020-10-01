@@ -72,6 +72,7 @@ public:
     bool ir_ready = false;
     bool performConv = false;
     bool sineFlag = false;
+    bool noiseFlag = false;
 
     int n = 0;
     int k = 0;

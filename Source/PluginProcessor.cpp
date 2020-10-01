@@ -162,6 +162,11 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
          }
          memcpy(channelData, sine, sizeof(float) * n);
      }
+     if (noiseFlag) {
+         for (int i = 0; i < n; i++) {
+             channelData[i] = rand() % 2;
+         }
+     }
 
     // when a new set of IRs is loaded, the overlap_add_buffer has to be allocated accordingly
     if (ir_update) {
@@ -296,9 +301,8 @@ void BinauralizationAudioProcessor::normalize(int n, float* data) {
 int BinauralizationAudioProcessor::set_padding_size(int n, int m) {
 
     // FFTW is more efficient with a power of 2, 3, 5, ... (using 2 for simplicity)
-    //k = (n + m - 1) % 2 ? n + m : n + m - 1;
-
     int p = log2(m + n - 1);
+
     k = 1 << (p + 1);
     
     return k;

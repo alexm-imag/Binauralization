@@ -34,15 +34,22 @@ BinauralizationAudioProcessorEditor::BinauralizationAudioProcessorEditor (Binaur
     HRTF_Slider.setTextBoxStyle(Slider::TextBoxBelow, 1, 50, 20);
     addAndMakeVisible(HRTF_Slider);
 
+    /*
     OpenButton.onClick = [this] {openIRfile(); };
     OpenButton.setColour(TextButton::buttonColourId, Colour(0xff79ed7f));
     OpenButton.setColour(TextButton::textColourOffId, Colours::black);
     addAndMakeVisible(OpenButton);
+    */
 
     SineButton.onClick = [this] {toggleSine(); };
     SineButton.setColour(TextButton::buttonColourId, Colour(0xff79ed7f));
     SineButton.setColour(TextButton::textColourOffId, Colours::black);
     addAndMakeVisible(SineButton);
+
+    NoiseButton.onClick = [this] {toggleNoise(); };
+    NoiseButton.setColour(TextButton::buttonColourId, Colour(0xff79ed7f));
+    NoiseButton.setColour(TextButton::textColourOffId, Colours::black);
+    addAndMakeVisible(NoiseButton);
 
 }
 
@@ -68,8 +75,8 @@ void BinauralizationAudioProcessorEditor::resized()
     ConvButton.setBounds(200, 75, 100, 50);
     DirButton.setBounds(100, 75, 100, 50);
     HRTF_Slider.setBounds(150, 125, 100, 100);
-    OpenButton.setBounds(200, 230, 100, 50);
     SineButton.setBounds(100, 230, 100, 50);
+    NoiseButton.setBounds(200, 230, 100, 50);
 
 }
 
@@ -182,14 +189,32 @@ void BinauralizationAudioProcessorEditor::toggleSine() {
 
     if (audioProcessor.sineFlag) {
         audioProcessor.sineFlag = false;
-        SineButton.setButtonText("Sine Active");
+        SineButton.setButtonText("Sine Inactive");
     }
 
     else {
         audioProcessor.sineFlag = true;
-        SineButton.setButtonText("Sine Inactive");
+        audioProcessor.noiseFlag = false;
+        SineButton.setButtonText("Sine Active");
+        NoiseButton.setButtonText("Noise Inactive");
     }
         
+}
+
+void BinauralizationAudioProcessorEditor::toggleNoise() {
+
+    if (audioProcessor.noiseFlag) {
+        audioProcessor.noiseFlag = false;
+        NoiseButton.setButtonText("Noise Inactive");
+    }
+
+    else {
+        audioProcessor.noiseFlag = true;
+        audioProcessor.sineFlag = false;
+        NoiseButton.setButtonText("Noise Active");
+        SineButton.setButtonText("Sine Inactive");
+    }
+
 }
 
 
