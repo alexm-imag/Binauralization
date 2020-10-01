@@ -156,15 +156,17 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
              // set f to n * 93.75 to have a complete wave inside sine
              double f = 375;
              for (int i = 0; i < n; i++) {
-                 sine[i] = 0.473 * cos(2 * juce::double_Pi * f * i / 48000.);   
+                 sine[i] = 0.5 * cos(2 * juce::double_Pi * f * i / 48000.);   
              }
              sineInit = true;
          }
          memcpy(channelData, sine, sizeof(float) * n);
      }
+     // use noise as test signal
      if (noiseFlag) {
          for (int i = 0; i < n; i++) {
-             channelData[i] = rand() % 2;
+             // 20: num. steps (normalized), 0.5 for level matching
+             channelData[i] = 0.5 * (rand() % 20)/20;
          }
      }
 

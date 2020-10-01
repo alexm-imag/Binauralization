@@ -27,19 +27,14 @@ BinauralizationAudioProcessorEditor::BinauralizationAudioProcessorEditor (Binaur
     ConvButton.setColour(TextButton::textColourOffId, Colours::black);
     addAndMakeVisible(ConvButton);
 
-    // maybe add a way so the position data gets updated during longer drags and not just at the end?
+    // onDrag only changes slider value after releasing the slider
+    // for a continuous filter change a different approach has to be chosen, but this would also require
+    // are more complex filter transition process
     HRTF_Slider.onDragEnd = [this] {audioProcessor.hrtf_buffer.sel = HRTF_Slider.getValue(); };
     HRTF_Slider.setSliderStyle(Slider::Rotary);
     HRTF_Slider.setRange(0, 359, 1);
     HRTF_Slider.setTextBoxStyle(Slider::TextBoxBelow, 1, 50, 20);
     addAndMakeVisible(HRTF_Slider);
-
-    /*
-    OpenButton.onClick = [this] {openIRfile(); };
-    OpenButton.setColour(TextButton::buttonColourId, Colour(0xff79ed7f));
-    OpenButton.setColour(TextButton::textColourOffId, Colours::black);
-    addAndMakeVisible(OpenButton);
-    */
 
     SineButton.onClick = [this] {toggleSine(); };
     SineButton.setColour(TextButton::buttonColourId, Colour(0xff79ed7f));
@@ -65,7 +60,7 @@ void BinauralizationAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (juce::Colours::white);
     g.setFont (15.0f);
-    g.drawFittedText ("Binauralization 0.8", getLocalBounds(), juce::Justification::centredTop, 1);
+    g.drawFittedText ("Binauralization 1.0", getLocalBounds(), juce::Justification::centredTop, 1);
 }
 
 void BinauralizationAudioProcessorEditor::resized()
@@ -110,7 +105,7 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         }
 
         // only set flag, after it has been verified, that a file has been selected and the format is supported.
-        // Usage of FFT is deactivated in ProcessBlock during loading of new HRTF, so new collisons occur
+        // usage of FFT is deactivated in ProcessBlock during loading of new HRTF, so new collisons occur
         audioProcessor.ir_ready = false;
 
         audioProcessor.hrtf_buffer.num_samples = ir_reader->lengthInSamples;
@@ -122,8 +117,7 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
             free(audioProcessor.hrtf_buffer.right);
         }
 
-        // k >= M + N - 1 (length IR, length data - 1)
-        // k is a class member of audioProcessor
+        // set k to a power of 2 while fulfilling k >= M + N - 1 
         audioProcessor.set_padding_size(audioProcessor.n, audioProcessor.hrtf_buffer.num_samples);
 
         // allocate space for x HRFT spectra
@@ -215,41 +209,4 @@ void BinauralizationAudioProcessorEditor::toggleNoise() {
         SineButton.setButtonText("Sine Inactive");
     }
 
-}
-
-
-void BinauralizationAudioProcessorEditor::openIRfile() {
-
-    DBG("clicked");
-
-    // let user select an IR file
-    FileChooser selector("Choose IR file", File::getSpecialLocation(File::userDesktopDirectory), "*wav");
-
-    // check if something has been selected
-    if (selector.browseForFileToOpen()) {
-        File ir_file;
-        // store file in IRfile
-        ir_file = selector.getResult();
-
-        // allow .wav and .aiff formats
-        AudioFormatManager ir_manager;
-
-        ir_manager.registerBasicFormats();
-
-        AudioFormatReader* ir_reader = ir_manager.createReaderFor(ir_file);
-
-        AudioBuffer<float> tmp_buffer(2, ir_reader->lengthInSamples);
-
-        ir_reader->read(&tmp_buffer, 0, ir_reader->lengthInSamples, 0, 1, 1);
-
-        // copy AudioBuffer content into audioProcessor context
-        audioProcessor.ir_buffer = tmp_buffer;
-        // set IRhasbeenLoaded flag
-        audioProcessor.ir_flag = true;
-
-        DBG("file loaded");
-        return;
-    }
-
-    DBG("loading failed");
 }
