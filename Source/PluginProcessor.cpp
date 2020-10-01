@@ -156,7 +156,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
              // set f to n * 93.75 to have a complete wave inside sine
              double f = 375;
              for (int i = 0; i < n; i++) {
-                 sine[i] = 0.473 * cos(2 * juce::double_Pi * f * i / 48000.);    // 0.473
+                 sine[i] = 0.473 * cos(2 * juce::double_Pi * f * i / 48000.);   
              }
              sineInit = true;
          }
@@ -272,7 +272,7 @@ void BinauralizationAudioProcessor::perform_fft(int n, float* input, fftwf_compl
     // faster if one plan of this param set (no input/output) already exists?
     fftwf_plan plan = fftwf_plan_dft_r2c_1d(n, input, output, FFTW_ESTIMATE);  
     fftwf_execute(plan);
-    //fftwf_destroy_plan(plan);
+    fftwf_destroy_plan(plan);
     fftwf_cleanup();
 
 
@@ -281,7 +281,7 @@ void BinauralizationAudioProcessor::perform_ifft(int n, fftwf_complex* input, fl
 
     fftwf_plan plan = fftwf_plan_dft_c2r_1d(n, input, output, FFTW_ESTIMATE);
     fftwf_execute(plan);
-    //fftwf_destroy_plan(plan);
+    fftwf_destroy_plan(plan);
     fftwf_cleanup();
 
 }
@@ -295,7 +295,11 @@ void BinauralizationAudioProcessor::normalize(int n, float* data) {
 
 int BinauralizationAudioProcessor::set_padding_size(int n, int m) {
 
-    k = (n + m - 1) % 2 ? n + m : n + m - 1;
+    // FFTW is more efficient with a power of 2, 3, 5, ... (using 2 for simplicity)
+    //k = (n + m - 1) % 2 ? n + m : n + m - 1;
+
+    int p = log2(m + n - 1);
+    k = 1 << (p + 1);
     
     return k;
 }

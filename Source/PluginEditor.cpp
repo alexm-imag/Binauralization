@@ -58,7 +58,7 @@ void BinauralizationAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (juce::Colours::white);
     g.setFont (15.0f);
-    g.drawFittedText ("Binauralization 0.6", getLocalBounds(), juce::Justification::centredTop, 1);
+    g.drawFittedText ("Binauralization 0.8", getLocalBounds(), juce::Justification::centredTop, 1);
 }
 
 void BinauralizationAudioProcessorEditor::resized()
