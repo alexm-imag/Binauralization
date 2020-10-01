@@ -134,7 +134,7 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
 
-    int filter_sel = 0;
+    static int filter_sel = 0;
 
     
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
@@ -200,8 +200,12 @@ void BinauralizationAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
     if (!ir_update && ir_ready && performConv) {
 
         // get current HRTF selection from UI-Slider
-        filter_sel = hrtf_buffer.sel;
-        
+        if (filter_sel != hrtf_buffer.sel) {
+            filter_sel = hrtf_buffer.sel;
+            DBG("Change HRTF to:");
+            DBG(hrtf_buffer.sel);
+        }
+           
         // perform fft-based convolution
         // write inputData into overlap_buffers
         memcpy(overlap_buffer_left[0], channelData, (sizeof(float) * n));

@@ -88,7 +88,6 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
     // check if something has been selected
     if (selector.browseForMultipleFilesToOpen()) {
 
-        int i = 0;
         Array<File> files;
         AudioFormatManager ir_manager;
         AudioFormatReader* ir_reader = NULL;
@@ -97,12 +96,12 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         files = selector.getResults();
 
         // write first files entry onto file_ptr
-        File* file_ptr = files.begin();
+        File currentFile = files.getFirst();
 
         // register .wav and .aiff format
         ir_manager.registerBasicFormats();
         // create audio reader according to first audio file
-        ir_reader = ir_manager.createReaderFor(*file_ptr);
+        ir_reader = ir_manager.createReaderFor(currentFile);
 
         // if an invalid file format has been read, ir_manager returns a NULL pointer
         if (ir_reader == NULL) {
@@ -130,7 +129,7 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         // allocate space for x HRFT spectra
         audioProcessor.hrtf_buffer.left = (fftwf_complex**)malloc(sizeof(fftwf_complex*) * files.size());
         audioProcessor.hrtf_buffer.right = (fftwf_complex**)malloc(sizeof(fftwf_complex*) * files.size());
-        for (i = 0; i < audioProcessor.hrtf_buffer.num_hrtfs; i++) {
+        for (int i = 0; i < audioProcessor.hrtf_buffer.num_hrtfs; i++) {
             audioProcessor.hrtf_buffer.left[i] = fftwf_alloc_complex(audioProcessor.k);
             audioProcessor.hrtf_buffer.right[i] = fftwf_alloc_complex(audioProcessor.k);
         }       
@@ -141,10 +140,11 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         tmp_buffer.clear();
         
         // iterate through array of files
-        i = 0;
-        do {
+        for (int i = 0; i < files.size(); i++) {
+            currentFile = files.getReference(i);
+
             // first reader gets written twice, which isn't pretty but ok
-            ir_reader = ir_manager.createReaderFor(*file_ptr);
+            ir_reader = ir_manager.createReaderFor(currentFile);
 
             // copy reader data to float AudioBuffer
             ir_reader->read(&tmp_buffer, 0, ir_reader->lengthInSamples, 0, 1, 1);
@@ -153,9 +153,9 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
             audioProcessor.perform_fft(audioProcessor.k, tmp_buffer.getWritePointer(0), audioProcessor.hrtf_buffer.left[i]);
             audioProcessor.perform_fft(audioProcessor.k, tmp_buffer.getWritePointer(1), audioProcessor.hrtf_buffer.right[i]);
 
-        } while (*(file_ptr + i++) != files.getLast());
+        }
 
-        DBG("dir loaded");
+        DBG("Dir loaded");
 
         audioProcessor.ir_ready = true;
         audioProcessor.ir_update = true;
@@ -163,7 +163,7 @@ void BinauralizationAudioProcessorEditor::openIRdirectory() {
         return;
     }
 
-    DBG("loading failed");
+    DBG("Loading failed");
 
 }
 
